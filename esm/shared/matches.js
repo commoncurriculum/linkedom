@@ -111,6 +111,12 @@ export const prepareMatch = (element, selectors) => CSSselect.compile(
 // way — pays the compiler once per element rather than once per selector.
 const compiledMatchers = new Map();
 
+/**
+ * `CSSselect.compile` returns an untyped query, so without this the generated
+ * declarations widen `matches` from `boolean` to `any`, and `Element` and `Image`
+ * along with it.
+ * @returns {boolean}
+ */
 export const matches = (element, selectors) => {
   // `:scope` resolves against the element it is called on, so it cannot be shared.
   if (selectors.includes(':scope'))
