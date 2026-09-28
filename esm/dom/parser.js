@@ -1,5 +1,5 @@
 import {DOM_PARSER, GLOBALS} from '../shared/symbols.js';
-import {parseFromString} from '../shared/parse-from-string.js';
+import {parseDocument} from '../shared/parse.js';
 
 import {HTMLDocument} from '../html/document.js';
 import {SVGDocument} from '../svg/document.js';
@@ -34,12 +34,12 @@ export class DOMParser {
     if (isHTML) {
       if (markupLanguage === '...')
         markupLanguage = '<!doctype html><html><head></head><body></body></html>';
-      return parseFromString(document, true, markupLanguage == null ? '' : String(markupLanguage));
+      return parseDocument(document, markupLanguage == null ? '' : String(markupLanguage));
     }
     if (!markupLanguage)
       return document;
     try {
-      return parseFromString(document, false, String(markupLanguage));
+      return parseDocument(document, String(markupLanguage));
     }
     catch (error) {
       const failed = create();

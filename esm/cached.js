@@ -12,6 +12,7 @@ import {HTMLDocument} from './html/document.js';
 import {
   childNodesWM,
   childrenWM,
+  elementsByTagNameWM,
   querySelectorWM,
   querySelectorAllWM,
   get,
@@ -62,6 +63,7 @@ defineProperties(ParentNode.prototype, {
 });
 
 const {
+  getElementsByTagName,
   insertBefore,
   querySelector,
   querySelectorAll
@@ -88,8 +90,8 @@ defineProperties(ParentNode.prototype, {
   getElementsByClassName: {value(className) {
     return this.querySelectorAll('.' + className);
   }},
-  getElementsByTagName: {value(tagName) {
-    return this.querySelectorAll(tagName);
+  getElementsByTagName: {value(qualifiedName) {
+    return query(elementsByTagNameWM, getElementsByTagName, this, qualifiedName);
   }},
   querySelector: {value(selectors) {
     return query(querySelectorWM, querySelector, this, selectors);

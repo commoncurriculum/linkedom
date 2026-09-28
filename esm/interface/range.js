@@ -1,11 +1,10 @@
 // https://dom.spec.whatwg.org/#concept-live-range
 
-import {COMMENT_NODE, DOCUMENT_NODE, ELEMENT_NODE, TEXT_NODE} from '../shared/constants.js';
+import {COMMENT_NODE, TEXT_NODE} from '../shared/constants.js';
 import {END, NEXT, PREV, START} from '../shared/symbols.js';
 
 import {getEnd, setAdjacent} from '../shared/utils.js';
-
-import {adjacentContext, parseFragment} from '../mixin/inner-html.js';
+import {fragmentContext, parseFragment} from '../shared/parse.js';
 
 const deleteContents = ({[START]: start, [END]: end}, fragment = null) => {
   setAdjacent(start[PREV], end[NEXT]);
@@ -103,10 +102,7 @@ export class Range {
     let {commonAncestorContainer: node} = this;
     if (node.nodeType === TEXT_NODE || node.nodeType === COMMENT_NODE)
       node = node.parentElement || node.ownerDocument;
-    const context = node.nodeType === ELEMENT_NODE ?
-      adjacentContext(node) :
-      (node.nodeType === DOCUMENT_NODE ? node : node.ownerDocument).createElement('body');
-    return parseFragment(context, html);
+    return parseFragment(fragmentContext(node), html);
   }
 
   cloneRange() {

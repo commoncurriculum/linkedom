@@ -8,15 +8,17 @@ import {
   TEXT_NODE,
   NODE_END,
   CDATA_SECTION_NODE,
-  COMMENT_NODE
+  COMMENT_NODE,
+  HTML_NAMESPACE
 } from '../shared/constants.js';
 
-import {PRIVATE, END, NEXT, PREV, START, VALUE} from '../shared/symbols.js';
+import {PRIVATE, END, MIME, NEXT, PREFIX, PREV, START, VALUE} from '../shared/symbols.js';
 
 import {prepareMatch} from '../shared/matches.js';
+import {asciiLowercase} from '../shared/names.js';
 import {previousSibling, nextSibling} from '../shared/node.js';
 import {baseChanged} from '../shared/url.js';
-import {getEnd, knownAdjacent, knownBoundaries, knownSegment, knownSiblings, localCase} from '../shared/utils.js';
+import {getEnd, knownAdjacent, knownBoundaries, knownSegment, knownSiblings} from '../shared/utils.js';
 
 import {Node} from '../interface/node.js';
 import {Text} from '../interface/text.js';
@@ -34,6 +36,19 @@ const nodeArgument = (method, node) => {
   if (!isNode(node))
     throw new TypeError(`Failed to execute '${method}' on 'Node': parameter 1 is not of type 'Node'.`);
 };
+
+const descendants = (root, matches) => {
+  const elements = new NodeList;
+  let {[NEXT]: next, [END]: end} = root;
+  while (next !== end) {
+    if (next.nodeType === ELEMENT_NODE && matches(next))
+      elements.push(next);
+    next = next[NEXT];
+  }
+  return elements;
+};
+
+const qualify = ({[PREFIX]: prefix, localName}) => prefix ? `${prefix}:${localName}` : localName;
 
 const insert = (parentNode, child, nodes) => {
   const {ownerDocument} = parentNode;
@@ -158,32 +173,31 @@ export class ParentNode extends Node {
   }
 
   getElementsByClassName(className) {
-    const elements = new NodeList;
-    let {[NEXT]: next, [END]: end} = this;
-    while (next !== end) {
-      if (
-        next.nodeType === ELEMENT_NODE &&
-        next.hasAttribute('class') &&
-        next.classList.has(className)
-      )
-        elements.push(next);
-      next = next[NEXT];
-    }
-    return elements;
+    return descendants(this, element => element.hasAttribute('class') && element.classList.has(className));
   }
 
-  getElementsByTagName(tagName) {
-    const elements = new NodeList;
-    let {[NEXT]: next, [END]: end} = this;
-    while (next !== end) {
-      if (next.nodeType === ELEMENT_NODE && (
-        next.localName === tagName ||
-        localCase(next) === tagName
-      ))
-        elements.push(next);
-      next = next[NEXT];
+  // https://dom.spec.whatwg.org/#concept-getelementsbytagname
+  getElementsByTagName(qualifiedName) {
+    qualifiedName = String(qualifiedName);
+    if (qualifiedName === '*')
+      return descendants(this, () => true);
+    if ((this.ownerDocument || this)[MIME].ignoreCase) {
+      const lowercase = asciiLowercase(qualifiedName);
+      return descendants(this, element => qualify(element) === (
+        element.namespaceURI === HTML_NAMESPACE ? lowercase : qualifiedName
+      ));
     }
-    return elements;
+    return descendants(this, element => qualify(element) === qualifiedName);
+  }
+
+  // https://dom.spec.whatwg.org/#concept-getelementsbytagnamens
+  getElementsByTagNameNS(namespace, localName) {
+    namespace = namespace === '' || namespace == null ? null : String(namespace);
+    localName = String(localName);
+    return descendants(this, element =>
+      (namespace === '*' || element.namespaceURI === namespace) &&
+      (localName === '*' || element.localName === localName)
+    );
   }
 
   querySelector(selectors) {

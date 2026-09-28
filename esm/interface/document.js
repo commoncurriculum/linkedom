@@ -293,12 +293,6 @@ export class Document extends NonElementParentNode {
     return query(super.querySelectorAll, this, selectors);
   }
 
-  /* c8 ignore start */
-  getElementsByTagNameNS(_, name) {
-    return this.getElementsByTagName(name);
-  }
-  /* c8 ignore stop */
-
   createAttributeNS(namespace, qualifiedName) {
     qualifiedName = String(qualifiedName);
     const {namespace: ns, prefix, localName} = validateAndExtract(namespace, qualifiedName, false);

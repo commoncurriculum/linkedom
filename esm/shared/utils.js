@@ -28,10 +28,6 @@ export const knownSiblings = (prev, current, next) => {
   knownAdjacent(current, next);
 };
 
-export const localCase = ({localName, ownerDocument}) => {
-  return ownerDocument[MIME].ignoreCase ? localName.toUpperCase() : localName;
-};
-
 export const setAdjacent = (prev, next) => {
   if (prev)
     prev[NEXT] = next;

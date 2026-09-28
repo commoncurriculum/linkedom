@@ -37,6 +37,7 @@ import {
 
 import {outerHTML} from '../shared/serialize-html.js';
 import {serializeXML} from '../shared/serialize-xml.js';
+import {fragmentContext, parseFragment} from '../shared/parse.js';
 
 import {elementAsJSON} from '../shared/jsdon.js';
 import {matches, prepareMatch} from '../shared/matches.js';
@@ -46,7 +47,7 @@ import {isConnected, parentElement, previousSibling, nextSibling} from '../share
 import {previousElementSibling, nextElementSibling} from '../mixin/non-document-type-child-node.js';
 
 import {before, after, replaceWith, remove} from '../mixin/child-node.js';
-import {adjacentContext, getInnerHtml, parseFragment, setInnerHtml} from '../mixin/inner-html.js';
+import {getInnerHtml, setInnerHtml} from '../mixin/inner-html.js';
 import {ParentNode} from '../mixin/parent-node.js';
 
 import {DOMStringMap} from '../dom/string-map.js';
@@ -266,8 +267,7 @@ export class Element extends ParentNode {
       return;
     if (parentNode.nodeType === DOCUMENT_NODE)
       throw new DOMException('A document can\'t take markup in place of its element.', 'NoModificationAllowedError');
-    const context = parentNode.nodeType === ELEMENT_NODE ?
-      parentNode : this.ownerDocument.createElement('body');
+    const context = parentNode.nodeType === ELEMENT_NODE ? parentNode : fragmentContext(parentNode);
     parentNode.replaceChild(parseFragment(context, html), this);
   }
   // </contentRelated>
@@ -455,7 +455,7 @@ export class Element extends ParentNode {
       default:
         throw invalidPosition();
     }
-    insertAdjacent(this, position, parseFragment(adjacentContext(context), html));
+    insertAdjacent(this, position, parseFragment(fragmentContext(context), html));
   }
 
   insertAdjacentText(position, text) {
@@ -511,9 +511,4 @@ export class Element extends ParentNode {
     return json;
   }
   // </custom>
-
-
-  /* c8 ignore start */
-  getElementsByTagNameNS(_, name) { return this.getElementsByTagName(name); }
-  /* c8 ignore stop */
 }
