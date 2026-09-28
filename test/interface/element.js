@@ -26,7 +26,7 @@ assert(htmlDoc.firstChild.getAttribute('content-desc'), 'text3&more');
 assert(htmlDoc.firstChild.outerHTML, '<span content-desc="text3&amp;more"></span>');
 assert(htmlDoc.innerHTML, '<span content-desc="text3&amp;more"></span>');
 
-htmlDoc.firstChild.setAttribute('content-desc', ''); // attribute is not in emptyAttributes set is empty
+htmlDoc.firstChild.setAttribute('content-desc', '');
 assert(htmlDoc.firstChild.getAttribute('content-desc'), '');
 assert(htmlDoc.firstChild.outerHTML, '<span content-desc=""></span>');
 assert(htmlDoc.innerHTML, '<span content-desc=""></span>');
@@ -74,7 +74,7 @@ assert(xmlDoc.firstChild.getAttribute('content-desc'), 'text3&more');
 assert(xmlDoc.firstChild.outerHTML, '<android.view.View content-desc="text3&amp;more"/>');
 assert(xmlDoc.innerHTML, '<android.view.View content-desc="text3&amp;more"/>');
 
-xmlDoc.firstChild.setAttribute('content-desc', '');// attribute is not in emptyAttributes set is empty (even for XML)
+xmlDoc.firstChild.setAttribute('content-desc', '');
 assert(xmlDoc.firstChild.getAttribute('content-desc'), '');
 assert(xmlDoc.firstChild.outerHTML, '<android.view.View content-desc=""/>');
 assert(xmlDoc.innerHTML, '<android.view.View content-desc=""/>');
@@ -110,7 +110,7 @@ assert(xmlNode.toString(), '<div>beforebegin<p>afterbegin!beforeend<i>1</i><i>2<
 xmlNode.firstElementChild.insertAdjacentText('afterend', '<OK>');
 assert(xmlNode.toString(), '<div>beforebegin<p>afterbegin!beforeend<i>1</i><i>2</i></p>&lt;OK&gt;afterend</div>', 'insertAdjacentText works');
 
-const xmlDocWithEmptyAttrFromSet = parser.parseFromString(`<hierarchy><android.view.View style=""/></hierarchy>`, 'text/xml').documentElement;// attribute is in emptyAttributes set is empty (even for XML)
+const xmlDocWithEmptyAttrFromSet = parser.parseFromString(`<hierarchy><android.view.View style=""/></hierarchy>`, 'text/xml').documentElement;
 assert(xmlDocWithEmptyAttrFromSet.firstChild.getAttribute('style'), '');
 assert(xmlDocWithEmptyAttrFromSet.firstChild.outerHTML, '<android.view.View style=""/>');
 assert(xmlDocWithEmptyAttrFromSet.innerHTML, '<android.view.View style=""/>');

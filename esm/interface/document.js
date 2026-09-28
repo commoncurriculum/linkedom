@@ -15,6 +15,8 @@ import {asciiLowercase, validAttributeName, validElementName, validateAndExtract
 import {Mime} from '../shared/mime.js';
 import {knownSiblings} from '../shared/utils.js';
 import {assign, create, defineProperties, setPrototypeOf} from '../shared/object.js';
+import {innerHTML} from '../shared/serialize-html.js';
+import {serializeXML} from '../shared/serialize-xml.js';
 
 import {NonElementParentNode} from '../mixin/non-element-parent-node.js';
 
@@ -268,7 +270,9 @@ export class Document extends NonElementParentNode {
     return node;
   }
 
-  toString() { return this.childNodes.join(''); }
+  toString() {
+    return this[MIME].ignoreCase ? innerHTML(this) : serializeXML(this, false);
+  }
 
   querySelector(selectors) {
     return query(super.querySelector, this, selectors);

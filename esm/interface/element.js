@@ -496,10 +496,6 @@ export class Element extends ParentNode {
   }
 
   // <custom>
-  toString() {
-    return ignoreCase(this) ? outerHTML(this) : serializeXML(this, false);
-  }
-
   toJSON() {
     const json = [];
     elementAsJSON(this, json);

@@ -2,7 +2,6 @@ import {ELEMENT_NODE, HTML_NAMESPACE} from '../shared/constants.js';
 import {CREATE_ELEMENT, CUSTOM_ELEMENTS, END, NEXT} from '../shared/symbols.js';
 import {htmlClasses} from '../shared/register-html-class.js';
 import {asciiLowercase, isValidCustomElementName, validElementName} from '../shared/names.js';
-import {innerHTML} from '../shared/serialize-html.js';
 
 import {Document} from '../interface/document.js';
 import {NodeList} from '../interface/node-list.js';
@@ -59,8 +58,6 @@ export const createHTMLElement = (ownerDocument, builtin, localName, options) =>
  */
 export class HTMLDocument extends Document {
   constructor() { super('text/html'); }
-
-  toString() { return innerHTML(this); }
 
   [CREATE_ELEMENT](namespace, localName, prefix = null) {
     return namespace === HTML_NAMESPACE && !prefix ?

@@ -20,6 +20,9 @@ import {
 } from '../shared/constants.js';
 
 import {NEXT, PREV} from '../shared/symbols.js';
+import {ignoreCase} from '../shared/utils.js';
+import {outerHTML} from '../shared/serialize-html.js';
+import {serializeXML} from '../shared/serialize-xml.js';
 
 import {EventTarget} from './event-target.js';
 
@@ -169,8 +172,11 @@ export class Node extends EventTarget {
    * @returns The removed node.
    */
   removeChild(child) { return child }
-  toString() { return ''; }
   /* c8 ignore stop */
+
+  toString() {
+    return ignoreCase(this) ? outerHTML(this) : serializeXML(this, false);
+  }
 
   hasChildNodes() { return !!this.lastChild; }
   isSameNode(node) { return this === node; }

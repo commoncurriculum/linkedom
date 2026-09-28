@@ -2,15 +2,14 @@ import {ATTRIBUTE_NODE, HTML_NAMESPACE} from '../shared/constants.js';
 import {CHANGED, VALUE} from '../shared/symbols.js';
 import {String, ignoreCase} from '../shared/utils.js';
 import {attrAsJSON} from '../shared/jsdon.js';
-import {attributeChanged, emptyAttributes} from '../shared/attributes.js';
+import {attributeChanged} from '../shared/attributes.js';
+import {serializeAttribute} from '../shared/serialize-html.js';
+import {serializeXMLAttribute} from '../shared/serialize-xml.js';
 
 import {attributeChangedCallback as moAttributes} from './mutation-observer.js';
 import {attributeChangedCallback as ceAttributes} from './custom-element-registry.js';
 
 import {Node} from './node.js';
-import {escape} from '../shared/text-escaper.js';
-
-const QUOTE = /"/g;
 
 // A node's own toString serializes it, but WebIDL converts it to a DOMString as
 // browsers do: links through their href, other nodes through Object.prototype.toString.
@@ -58,12 +57,7 @@ export class Attr extends Node {
   }
 
   toString() {
-    const {name, [VALUE]: value} = this;
-    if (emptyAttributes.has(name) && !value) {
-      return ignoreCase(this) ? name : `${name}=""`;
-    }
-    const escapedValue = (ignoreCase(this) ? value : escape(value)).replace(QUOTE, '&quot;');
-    return `${name}="${escapedValue}"`;
+    return ignoreCase(this) ? serializeAttribute(this) : serializeXMLAttribute(this);
   }
 
   toJSON() {

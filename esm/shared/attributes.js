@@ -6,40 +6,6 @@ import {knownAdjacent, knownSiblings} from './utils.js';
 import {attributeChangedCallback as ceAttributes} from '../interface/custom-element-registry.js';
 import {attributeChangedCallback as moAttributes} from '../interface/mutation-observer.js';
 
-export const emptyAttributes = new Set([
-  'allowfullscreen',
-  'allowpaymentrequest',
-  'async',
-  'autofocus',
-  'autoplay',
-  'checked',
-  'class',
-  'contenteditable',
-  'controls',
-  'default',
-  'defer',
-  'disabled',
-  'draggable',
-  'formnovalidate',
-  'hidden',
-  'id',
-  'ismap',
-  'itemscope',
-  'loop',
-  'multiple',
-  'muted',
-  'nomodule',
-  'novalidate',
-  'open',
-  'playsinline',
-  'readonly',
-  'required',
-  'reversed',
-  'selected',
-  'style',
-  'truespeed'
-]);
-
 const {add, clear} = Set.prototype;
 const asciiWhitespace = /[\t\n\f\r ]+/;
 

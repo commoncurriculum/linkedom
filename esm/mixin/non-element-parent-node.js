@@ -4,6 +4,9 @@
 import {ELEMENT_NODE} from '../shared/constants.js';
 import {END, NEXT} from '../shared/symbols.js';
 import {nonElementAsJSON} from '../shared/jsdon.js';
+import {ignoreCase} from '../shared/utils.js';
+import {innerHTML} from '../shared/serialize-html.js';
+import {serializeXML} from '../shared/serialize-xml.js';
 
 import {ParentNode} from './parent-node.js';
 
@@ -30,8 +33,9 @@ export class NonElementParentNode extends ParentNode {
   }
 
   toString() {
-    const {childNodes, localName} = this;
-    return `<${localName}>${childNodes.join('')}</${localName}>`;
+    const {localName} = this;
+    const children = ignoreCase(this) ? innerHTML(this) : serializeXML(this, false);
+    return `<${localName}>${children}</${localName}>`;
   }
 
   toJSON() {

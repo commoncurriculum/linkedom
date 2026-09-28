@@ -1,7 +1,7 @@
-// w3c-xmlserializer is jsdom's implementation of the DOM Parsing standard's
-// XML serialization.
-
 import produceXMLSerialization from 'w3c-xmlserializer';
+import {serializeAttributeValue} from 'w3c-xmlserializer/lib/attributes.js';
+
+import {VALUE} from './symbols.js';
 
 /**
  * @param {Node} node
@@ -16,3 +16,6 @@ export const serializeXML = (node, requireWellFormed) => {
     throw new DOMException(error.message, 'InvalidStateError');
   }
 };
+
+export const serializeXMLAttribute = attribute =>
+  `${attribute.name}="${serializeAttributeValue(attribute[VALUE], false)}"`;
