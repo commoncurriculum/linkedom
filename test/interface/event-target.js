@@ -61,8 +61,8 @@ buttonTarget.addEventListener(
     );
     assert(
       event.composedPath().length,
-      5,
-      'Event bubbling, composed path should have 5 EventTarget'
+      6,
+      'Event bubbling, composed path should have 6 EventTarget'
     );
     assert(
       event.eventPhase,

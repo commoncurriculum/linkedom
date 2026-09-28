@@ -20,11 +20,11 @@ assert(div.toString(), '<div><p>hello</p> world</div>');
 assert(div.namespaceURI, 'http://www.w3.org/1999/xhtml');
 
 const parser = new DOMParser();
-const htmlDoc = parser.parseFromString(`<div><span content-desc="text3&amp;more"/></div>`, 'text/html').documentElement;
+const htmlDoc = parser.parseFromString(`<div><span content-desc="text3&amp;more"/></div>`, 'text/html').body.firstElementChild;
 
 assert(htmlDoc.firstChild.getAttribute('content-desc'), 'text3&more');
-assert(htmlDoc.firstChild.outerHTML, '<span content-desc="text3&more"></span>');
-assert(htmlDoc.innerHTML, '<span content-desc="text3&more"></span>');
+assert(htmlDoc.firstChild.outerHTML, '<span content-desc="text3&amp;more"></span>');
+assert(htmlDoc.innerHTML, '<span content-desc="text3&amp;more"></span>');
 
 htmlDoc.firstChild.setAttribute('content-desc', ''); // attribute is not in emptyAttributes set is empty
 assert(htmlDoc.firstChild.getAttribute('content-desc'), '');
@@ -34,8 +34,18 @@ assert(htmlDoc.innerHTML, '<span content-desc=""></span>');
 const htmlNode = htmlDoc.ownerDocument.createElement('div');
 htmlNode.innerHTML = '<p>!</p>';
 assert(htmlNode.innerHTML, '<p>!</p>', 'innerHTML');
-htmlNode.insertAdjacentHTML('beforebegin', 'beforebegin');
-htmlNode.insertAdjacentHTML('afterend', 'afterend');
+try {
+  htmlNode.insertAdjacentHTML('beforebegin', 'beforebegin');
+  assert(true, false, 'no parent, beforebegin should throw');
+} catch ({name}) {
+  assert(name, 'NoModificationAllowedError', 'no parent, beforebegin throws');
+}
+try {
+  htmlNode.insertAdjacentHTML('afterend', 'afterend');
+  assert(true, false, 'no parent, afterend should throw');
+} catch ({name}) {
+  assert(name, 'NoModificationAllowedError', 'no parent, afterend throws');
+}
 assert(htmlNode.toString(), '<div><p>!</p></div>', 'no element, no before/after');
 htmlNode.firstElementChild.insertAdjacentHTML('beforebegin', 'beforebegin');
 assert(htmlNode.toString(), '<div>beforebegin<p>!</p></div>', 'beforebegin works');
@@ -52,28 +62,38 @@ assert(htmlNode.toString(), '<div>beforebegin<p>afterbegin!beforeend<i>1</i><i>2
 htmlNode.firstElementChild.insertAdjacentText('afterend', '<OK>');
 assert(htmlNode.toString(), '<div>beforebegin<p>afterbegin!beforeend<i>1</i><i>2</i></p>&lt;OK&gt;afterend</div>', 'insertAdjacentText works');
 
-const htmlDocWithEmptyAttrFromSet = parser.parseFromString(`<div><span style=""/></div>`, 'text/html').documentElement; // attribute is in emptyAttributes set is empty
+const htmlDocWithEmptyAttrFromSet = parser.parseFromString(`<div><span style=""/></div>`, 'text/html').body.firstElementChild;
 
 assert(htmlDocWithEmptyAttrFromSet.firstChild.getAttribute('style'), '');
-assert(htmlDocWithEmptyAttrFromSet.firstChild.outerHTML, '<span></span>');
-assert(htmlDocWithEmptyAttrFromSet.innerHTML, '<span></span>');
+assert(htmlDocWithEmptyAttrFromSet.firstChild.outerHTML, '<span style=""></span>');
+assert(htmlDocWithEmptyAttrFromSet.innerHTML, '<span style=""></span>');
 
 const xmlDoc = parser.parseFromString(`<hierarchy><android.view.View content-desc="text3&amp;more"/></hierarchy>`, 'text/xml').documentElement;
 
-assert(xmlDoc.firstChild.getAttribute('content-desc'), 'text3&amp;more');
-assert(xmlDoc.firstChild.outerHTML, '<android.view.View content-desc="text3&amp;more" />');
-assert(xmlDoc.innerHTML, '<android.view.View content-desc="text3&amp;more" />');
+assert(xmlDoc.firstChild.getAttribute('content-desc'), 'text3&more');
+assert(xmlDoc.firstChild.outerHTML, '<android.view.View content-desc="text3&amp;more"/>');
+assert(xmlDoc.innerHTML, '<android.view.View content-desc="text3&amp;more"/>');
 
 xmlDoc.firstChild.setAttribute('content-desc', '');// attribute is not in emptyAttributes set is empty (even for XML)
 assert(xmlDoc.firstChild.getAttribute('content-desc'), '');
-assert(xmlDoc.firstChild.outerHTML, '<android.view.View content-desc="" />');
-assert(xmlDoc.innerHTML, '<android.view.View content-desc="" />');
+assert(xmlDoc.firstChild.outerHTML, '<android.view.View content-desc=""/>');
+assert(xmlDoc.innerHTML, '<android.view.View content-desc=""/>');
 
 const xmlNode = xmlDoc.ownerDocument.createElement('div');
 xmlNode.innerHTML = '<p>!</p>';
 assert(xmlNode.innerHTML, '<p>!</p>', 'innerHTML');
-xmlNode.insertAdjacentHTML('beforebegin', 'beforebegin');
-xmlNode.insertAdjacentHTML('afterend', 'afterend');
+try {
+  xmlNode.insertAdjacentHTML('beforebegin', 'beforebegin');
+  assert(true, false, 'no parent, beforebegin should throw');
+} catch ({name}) {
+  assert(name, 'NoModificationAllowedError', 'no parent, beforebegin throws');
+}
+try {
+  xmlNode.insertAdjacentHTML('afterend', 'afterend');
+  assert(true, false, 'no parent, afterend should throw');
+} catch ({name}) {
+  assert(name, 'NoModificationAllowedError', 'no parent, afterend throws');
+}
 assert(xmlNode.toString(), '<div><p>!</p></div>', 'no element, no before/after');
 xmlNode.firstElementChild.insertAdjacentHTML('beforebegin', 'beforebegin');
 assert(xmlNode.toString(), '<div>beforebegin<p>!</p></div>', 'beforebegin works');
@@ -92,5 +112,5 @@ assert(xmlNode.toString(), '<div>beforebegin<p>afterbegin!beforeend<i>1</i><i>2<
 
 const xmlDocWithEmptyAttrFromSet = parser.parseFromString(`<hierarchy><android.view.View style=""/></hierarchy>`, 'text/xml').documentElement;// attribute is in emptyAttributes set is empty (even for XML)
 assert(xmlDocWithEmptyAttrFromSet.firstChild.getAttribute('style'), '');
-assert(xmlDocWithEmptyAttrFromSet.firstChild.outerHTML, '<android.view.View style="" />');
-assert(xmlDocWithEmptyAttrFromSet.innerHTML, '<android.view.View style="" />');
+assert(xmlDocWithEmptyAttrFromSet.firstChild.outerHTML, '<android.view.View style=""/>');
+assert(xmlDocWithEmptyAttrFromSet.innerHTML, '<android.view.View style=""/>');

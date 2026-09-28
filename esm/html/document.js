@@ -1,7 +1,7 @@
 import {ELEMENT_NODE, HTML_NAMESPACE} from '../shared/constants.js';
 import {CREATE_ELEMENT, CUSTOM_ELEMENTS, END, NEXT} from '../shared/symbols.js';
 import {htmlClasses} from '../shared/register-html-class.js';
-import {asciiLowercase, validElementName} from '../shared/names.js';
+import {asciiLowercase, isValidCustomElementName, validElementName} from '../shared/names.js';
 import {innerHTML} from '../shared/serialize-html.js';
 
 import {Document} from '../interface/document.js';
@@ -49,7 +49,7 @@ export const createHTMLElement = (ownerDocument, builtin, localName, options) =>
     }
   }
   const Class = htmlClasses.get(localName) || (
-    localName.includes('-') || htmlElements.has(localName) ? HTMLElement : HTMLUnknownElement
+    isValidCustomElementName(localName) || htmlElements.has(localName) ? HTMLElement : HTMLUnknownElement
   );
   return new Class(ownerDocument, localName);
 };

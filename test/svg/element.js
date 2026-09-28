@@ -16,10 +16,10 @@ assert(svg instanceof SVGElement, true, '<svg> is an instance of a facade');
 assert('ownerSVGElement' in svg, true, '<svg> ownerSVGElement');
 assert(svg.ownerSVGElement, null, '<svg> ownerSVGElement is null');
 assert(svg.firstChild.ownerSVGElement, svg, '<rect> has an ownerSVGElement');
-assert(document.toString(), '<div><svg><rect /></svg></div>', 'svg nodes are OK');
-assert(document.documentElement.cloneNode(true).outerHTML, '<div><svg><rect /></svg></div>', 'svg cloned');
+assert(document.toString(), '<html><head></head><body><div><svg><rect></rect></svg></div></body></html>', 'svg nodes are OK');
+assert(document.documentElement.cloneNode(true).outerHTML, '<html><head></head><body><div><svg><rect></rect></svg></div></body></html>', 'svg cloned');
 
-assert(JSON.stringify(document), '[9,1,"div",1,"svg",1,"rect",-4]');
+assert(JSON.stringify(document), '[9,1,"html",1,"head",-1,1,"body",1,"div",1,"svg",1,"rect",-6]');
 assert(JSON.stringify(svg), '[1,"svg",1,"rect",-2]');
 
 try {
@@ -39,7 +39,7 @@ assert(svg.className.what, 'ever', '<svg>.className');
 svg.setAttribute('test', 123);
 svg.setAttribute('style', 'width:100px');
 
-assert(svg.toString(), '<svg style="width:100px" test="123"><rect /></svg>');
+assert(svg.toString(), '<svg test="123" style="width:100px"><rect></rect></svg>');
 
 svg.className = 'a b c';
 assert(svg.getAttribute('class'), 'a b c');

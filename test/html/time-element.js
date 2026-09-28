@@ -4,7 +4,7 @@ const {parseHTML} = global[Symbol.for('linkedom')];
 
 const {document} = parseHTML('<time datetime="1989-06-03 16:00:00">A big event</time>');
 
-const {lastElementChild: time} = document;
+const {lastElementChild: time} = document.body;
 
 assert(time.dateTime, '1989-06-03 16:00:00');
 time.setAttribute('datetime', '1989-06-04 00:00:00');

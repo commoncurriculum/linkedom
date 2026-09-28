@@ -33,9 +33,19 @@ class HTMLSelectElement extends HTMLElement {
 
   get name() { return this.getAttribute('name'); }
   set name(value) { this.setAttribute('name', value); }
+
+  get multiple() { return booleanAttribute.get(this, 'multiple'); }
+  set multiple(value) { booleanAttribute.set(this, 'multiple', value); }
   /* c8 ignore stop */
 
-  get value() { return this.querySelector('option[selected]')?.value; }
+  // https://html.spec.whatwg.org/multipage/form-elements.html#dom-select-value
+  // Without a selected option, a single select shows its first enabled one.
+  get value() {
+    const {options} = this;
+    const option = options.find(option => option.selected) ||
+      (!this.multiple && options.find(option => !option.hasAttribute('disabled')));
+    return option ? option.value : '';
+  }
 }
 
 registerHTMLClass(tagName, HTMLSelectElement);

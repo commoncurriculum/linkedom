@@ -7,14 +7,14 @@ assert(parseJSON([9,10,'html',-1]).toString(), '<!DOCTYPE html>');
 
 assert(
   parseJSON([1,"html",2,"contenteditable",2,"test","1",3,"a",8,"b",1,"br",-2]).toString(),
-  '<html contenteditable test="1">a<!--b--><br></html>'
+  '<html contenteditable="" test="1">a<!--b--><br></html>'
 );
 
 // let xmlDocument = (new DOMParser).parseFromString('<html><body><![CDATA[test]]>text</body></html>', 'text/xml');
 
 assert(
   parseJSON([1,"html",1,"body",4,"test"]).toString(),
-  '<html><body><![CDATA[test]]></body></html>'
+  '<html><body>test</body></html>'
 );
 
 assert(
@@ -35,7 +35,7 @@ let div = parseJSON('[1,"div",1,"svg",1,"rect",-2,1,"c-e",-2]');
 
 assert(JSON.stringify(toJSON(div)), '[1,"div",1,"svg",1,"rect",-2,1,"c-e",-2]');
 
-assert(div.toString(), '<div><svg><rect /></svg><c-e></c-e></div>');
+assert(div.toString(), '<div><svg><rect></rect></svg><c-e></c-e></div>');
 
 assert(div.querySelector('c-e').constructed, void 0, 'not constructed');
 

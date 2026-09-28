@@ -4,18 +4,18 @@ const {parseHTML} = global[Symbol.for('linkedom')];
 
 let {document} = parseHTML('<template><div>foo</div><div>bar</div></template>');
 
-let template = document.documentElement;
+let template = document.querySelector('template');
 assert(template.innerHTML, '<div>foo</div><div>bar</div>');
 
 assert(template.toString(), '<template><div>foo</div><div>bar</div></template>');
-assert(document.toString(), '<template><div>foo</div><div>bar</div></template>');
+assert(document.toString(), '<html><head><template><div>foo</div><div>bar</div></template></head><body></body></html>');
 
 assert(document.querySelector('template > *'), null);
 
 assert(template.content, template.content);
 
 template.replaceChildren();
-assert(template.innerHTML, '');
+assert(template.innerHTML, '<div>foo</div><div>bar</div>');
 
 template.innerHTML = '<p>ok</p>';
 assert(template.innerHTML, '<p>ok</p>');
@@ -41,9 +41,16 @@ let html = `<!DOCTYPE html>
 
 ({document} = parseHTML(html));
 
-assert(document.toString(), html);
+assert(document.toString(), `<!DOCTYPE html><html><head><template>
+    <div></div>
+</template>
+<template>
 
-const docWithTemplateAttribute = parseHTML(`<div template="anything"><p>not inside a template</p></div>`).document.documentElement;
+</template>
+</head><body>
+</body></html>`);
+
+const docWithTemplateAttribute = parseHTML(`<div template="anything"><p>not inside a template</p></div>`).document.body.firstElementChild;
 
 assert(docWithTemplateAttribute.querySelector('*').tagName, 'P');
 assert(docWithTemplateAttribute.querySelectorAll('*').length, 1);

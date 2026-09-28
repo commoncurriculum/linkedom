@@ -5,7 +5,7 @@ const {parseHTML} = global[Symbol.for('linkedom')];
 // COMBINATIONS OF ATTRIBUTES
 // name & content
 const {document: nameAndContent} = parseHTML('<meta name="test" content="testContent">');
-const {lastElementChild: a} = nameAndContent;
+const {lastElementChild: a} = nameAndContent.head;
 // assert toString
 assert(a.toString(), '<meta name="test" content="testContent">');
 // assert name & content attribute
@@ -14,7 +14,7 @@ assert(a.content, 'testContent');
 
 // charset
 const {document: charset} = parseHTML('<meta charset="utf-8">');
-const {lastElementChild: b} = charset;
+const {lastElementChild: b} = charset.head;
 // assert toString
 assert(b.toString(), '<meta charset="utf-8">');
 // assert charset attribute
@@ -22,16 +22,16 @@ assert(b.charset, 'utf-8');
 
 // httpEquiv refresh & content
 const {document: httpEquivRefresh} = parseHTML('<meta http-equiv="refresh" content="0; url=https://google.com/?q=1&page=2">');
-const {lastElementChild: c} = httpEquivRefresh;
+const {lastElementChild: c} = httpEquivRefresh.head;
 // assert toString
-assert(c.toString(), '<meta http-equiv="refresh" content="0; url=https://google.com/?q=1&page=2">');
+assert(c.toString(), '<meta http-equiv="refresh" content="0; url=https://google.com/?q=1&amp;page=2">');
 // assert httpEquiv & content attribute
 assert(c.httpEquiv, 'refresh');
 assert(c.content, '0; url=https://google.com/?q=1&page=2');
 
 // httpEquiv content-security-policy & content
 const {document: httpEquivCSP} = parseHTML('<meta http-equiv="content-security-policy" content="default-src \'self\'; img-src https://*; child-src \'none\';">');
-const {lastElementChild: d} = httpEquivCSP;
+const {lastElementChild: d} = httpEquivCSP.head;
 // assert toString
 assert(d.toString(), '<meta http-equiv="content-security-policy" content="default-src \'self\'; img-src https://*; child-src \'none\';">');
 // assert httpEquiv & content attribute
@@ -40,7 +40,7 @@ assert(d.content, 'default-src \'self\'; img-src https://*; child-src \'none\';'
 
 // httpEquiv content-type & content
 const {document: httpEquivContentType} = parseHTML('<meta http-equiv="content-type" content="text/html; charset=utf-8">');
-const {lastElementChild: e} = httpEquivContentType;
+const {lastElementChild: e} = httpEquivContentType.head;
 // assert toString
 assert(e.toString(), '<meta http-equiv="content-type" content="text/html; charset=utf-8">');
 // assert httpEquiv & content attribute
@@ -49,7 +49,7 @@ assert(e.content, 'text/html; charset=utf-8');
 
 // httpEquiv default-style & content
 const {document: httpEquivDefaultStyle} = parseHTML('<meta http-equiv="default-style" content="text/css">');
-const {lastElementChild: f} = httpEquivDefaultStyle;
+const {lastElementChild: f} = httpEquivDefaultStyle.head;
 // assert toString
 assert(f.toString(), '<meta http-equiv="default-style" content="text/css">');
 // assert httpEquiv & content attribute
@@ -58,7 +58,7 @@ assert(f.content, 'text/css');
 
 // name="theme-color" & content & media
 const {document: themeColor} = parseHTML('<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: dark)">')
-const {lastElementChild: g} = themeColor;
+const {lastElementChild: g} = themeColor.head;
 // assert toString
 assert(g.toString(), '<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: dark)">')
 // assert name & content attribute
