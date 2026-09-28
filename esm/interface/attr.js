@@ -1,4 +1,4 @@
-import {ATTRIBUTE_NODE} from '../shared/constants.js';
+import {ATTRIBUTE_NODE, HTML_NAMESPACE} from '../shared/constants.js';
 import {CHANGED, VALUE} from '../shared/symbols.js';
 import {String, ignoreCase} from '../shared/utils.js';
 import {attrAsJSON} from '../shared/jsdon.js';
@@ -12,11 +12,17 @@ import {escape} from '../shared/text-escaper.js';
 
 const QUOTE = /"/g;
 
-// A node's own toString serializes it, but WebIDL converts it to a DOMString
-// through Object.prototype.toString, as browsers do.
-export const toDOMString = value => typeof value === 'string' ? value : (
-  value instanceof Node ? `[object ${value.constructor.name}]` : String(value)
-);
+// A node's own toString serializes it, but WebIDL converts it to a DOMString as
+// browsers do: links through their href, other nodes through Object.prototype.toString.
+export const toDOMString = value => {
+  if (typeof value === 'string')
+    return value;
+  if (!(value instanceof Node))
+    return String(value);
+  const {localName, namespaceURI} = value;
+  return (localName === 'a' || localName === 'area') && namespaceURI === HTML_NAMESPACE ?
+    value.href : `[object ${value.constructor.name}]`;
+};
 
 /**
  * @implements globalThis.Attr

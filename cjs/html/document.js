@@ -19,9 +19,7 @@ const htmlElements = new Set([
   'figure', 'footer', 'header', 'hgroup', 'i', 'kbd', 'main', 'mark', 'nav',
   'nobr', 'noembed', 'noframes', 'noscript', 'plaintext', 'rb', 'rp', 'rt',
   'rtc', 'ruby', 's', 'samp', 'search', 'section', 'small', 'strike', 'strong',
-  'sub', 'summary', 'sup', 'tt', 'u', 'var', 'wbr',
-  // interfaces linkedom doesn't implement
-  'col', 'colgroup', 'dialog', 'tbody', 'tfoot', 'thead'
+  'sub', 'summary', 'sup', 'tt', 'u', 'var', 'wbr'
 ]);
 
 const asciiWhitespace = /[\t\n\f\r ]+/g;

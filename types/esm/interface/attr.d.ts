@@ -1,4 +1,4 @@
-export function toDOMString(value: any): string;
+export function toDOMString(value: any): any;
 /**
  * @implements globalThis.Attr
  */
@@ -9,11 +9,11 @@ export class Attr extends Node implements globalThis.Attr {
     namespaceURI: any;
     prefix: any;
     get nodeName(): string;
-    set value(newValue: string);
-    get value(): string;
+    set value(newValue: any);
+    get value(): any;
     cloneNode(): Attr;
     toJSON(): any[];
-    [VALUE]: string;
+    [VALUE]: any;
     [CHANGED]: boolean;
 }
 import { Node } from './node.js';

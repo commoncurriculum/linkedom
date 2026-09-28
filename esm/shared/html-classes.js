@@ -66,6 +66,9 @@ import {HTMLDetailsElement} from '../html/details-element.js';
 import {HTMLSourceElement} from '../html/source-element.js';
 import {HTMLTrackElement} from '../html/track-element.js';
 import {HTMLMarqueeElement} from '../html/marquee-element.js';
+import {HTMLTableColElement} from '../html/table-col-element.js';
+import {HTMLTableSectionElement} from '../html/table-section-element.js';
+import {HTMLDialogElement} from '../html/dialog-element.js';
 import {registerHTMLClass} from './register-html-class.js';
 
 // https://html.spec.whatwg.org/multipage/indices.html#element-interfaces
@@ -75,10 +78,12 @@ registerHTMLClass('base', HTMLBaseElement);
 registerHTMLClass('body', HTMLBodyElement);
 registerHTMLClass('br', HTMLBRElement);
 registerHTMLClass('caption', HTMLTableCaptionElement);
+registerHTMLClass(['col', 'colgroup'], HTMLTableColElement);
 registerHTMLClass('data', HTMLDataElement);
 registerHTMLClass('datalist', HTMLDataListElement);
 registerHTMLClass(['del', 'ins'], HTMLModElement);
 registerHTMLClass('details', HTMLDetailsElement);
+registerHTMLClass('dialog', HTMLDialogElement);
 registerHTMLClass('dir', HTMLDirectoryElement);
 registerHTMLClass('div', HTMLDivElement);
 registerHTMLClass('dl', HTMLDListElement);
@@ -111,6 +116,7 @@ registerHTMLClass(['blockquote', 'q'], HTMLQuoteElement);
 registerHTMLClass('span', HTMLSpanElement);
 registerHTMLClass('table', HTMLTableElement);
 registerHTMLClass(['td', 'th'], HTMLTableCellElement);
+registerHTMLClass(['tbody', 'tfoot', 'thead'], HTMLTableSectionElement);
 registerHTMLClass('tr', HTMLTableRowElement);
 registerHTMLClass('track', HTMLTrackElement);
 registerHTMLClass('ul', HTMLUListElement);
@@ -184,7 +190,10 @@ export {
   HTMLDetailsElement,
   HTMLSourceElement,
   HTMLTrackElement,
-  HTMLMarqueeElement
+  HTMLMarqueeElement,
+  HTMLTableColElement,
+  HTMLTableSectionElement,
+  HTMLDialogElement
 };
 
 export const HTMLClasses = {
@@ -255,5 +264,8 @@ export const HTMLClasses = {
   HTMLDetailsElement,
   HTMLSourceElement,
   HTMLTrackElement,
-  HTMLMarqueeElement
+  HTMLMarqueeElement,
+  HTMLTableColElement,
+  HTMLTableSectionElement,
+  HTMLDialogElement
 };

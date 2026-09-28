@@ -8903,7 +8903,7 @@ new Set([
  * console.log(document.childNodes[1].tagName); //> 'html'
  *```
  */
-function parse$5(html, options) {
+function parse$6(html, options) {
     return Parser.parse(html, options);
 }
 function parseFragment$1(fragmentContext, html, options) {
@@ -9960,11 +9960,17 @@ const escape = es => replace.call(es, ca, pe);
 
 const QUOTE = /"/g;
 
-// A node's own toString serializes it, but WebIDL converts it to a DOMString
-// through Object.prototype.toString, as browsers do.
-const toDOMString = value => typeof value === 'string' ? value : (
-  value instanceof Node$1 ? `[object ${value.constructor.name}]` : $String(value)
-);
+// A node's own toString serializes it, but WebIDL converts it to a DOMString as
+// browsers do: links through their href, other nodes through Object.prototype.toString.
+const toDOMString = value => {
+  if (typeof value === 'string')
+    return value;
+  if (!(value instanceof Node$1))
+    return $String(value);
+  const {localName, namespaceURI} = value;
+  return (localName === 'a' || localName === 'area') && namespaceURI === HTML_NAMESPACE ?
+    value.href : `[object ${value.constructor.name}]`;
+};
 
 /**
  * @implements globalThis.Attr
@@ -10165,7 +10171,7 @@ class Adapter {
  * @param {string} html
  */
 const parseHTMLDocument = (document, html) => {
-  parse$5(html, {...options, treeAdapter: new Adapter(document)});
+  parse$6(html, {...options, treeAdapter: new Adapter(document)});
   return document;
 };
 
@@ -13282,7 +13288,7 @@ function isWhitespace$1(c) {
  * The first dimension represents selectors separated by commas (eg. `sub1, sub2`),
  * the second contains the relevant tokens for that selector.
  */
-function parse$4(selector) {
+function parse$5(selector) {
     const subselects = [];
     const endIndex = parseSelector(subselects, `${selector}`, 0);
     if (endIndex < selector.length) {
@@ -15398,7 +15404,7 @@ const NINE = "9".charCodeAt(0);
  * @returns An array containing the integer step size and the integer offset of the nth rule.
  * @example nthCheck.parse("2n+3"); // returns [2, 3]
  */
-function parse$3(formula) {
+function parse$4(formula) {
     formula = formula.trim().toLowerCase();
     switch (formula) {
         case "even": {
@@ -15487,7 +15493,7 @@ function parse$3(formula) {
  * check(6); // `true`
  */
 function nthCheck(formula) {
-    return compile$1(parse$3(formula));
+    return compile$1(parse$4(formula));
 }
 
 /**
@@ -15581,7 +15587,7 @@ function compileNth(reverse, ofType) {
         if (nthCheck$1 === falseFunc)
             return falseFunc;
         const ofSelector = ofMatch && compileToken
-            ? compileToken(parse$4(ofMatch[2].trim()), copyOptions(options), context)
+            ? compileToken(parse$5(ofMatch[2].trim()), copyOptions(options), context)
             : undefined;
         if (ofSelector === falseFunc)
             return falseFunc;
@@ -16042,7 +16048,7 @@ function compilePseudoSelector(next, selector, options, context, compileToken) {
             throw new Error(`Pseudo ${name} doesn't have any arguments`);
         }
         // The alias has to be parsed here, to make sure options are respected.
-        const alias = parse$4(stringPseudo);
+        const alias = parse$5(stringPseudo);
         return subselects["is"](next, alias, options, context, compileToken);
     }
     if (typeof userPseudo === "function") {
@@ -16348,7 +16354,7 @@ function compile(selector, options, context) {
  * @param context Context nodes used to scope selector matching.
  */
 function _compileUnsafe(selector, options, context) {
-    return compileToken(typeof selector === "string" ? parse$4(selector) : selector, convertOptionFormats(options), context);
+    return compileToken(typeof selector === "string" ? parse$5(selector) : selector, convertOptionFormats(options), context);
 }
 /**
  * Tests whether or not an element is matched by query.
@@ -31496,7 +31502,7 @@ function requirePrepareTokens () {
 
 var matchGraph = {};
 
-var parse$2 = {};
+var parse$3 = {};
 
 var scanner = {};
 
@@ -31648,7 +31654,7 @@ function requireScanner () {
 var hasRequiredParse$1;
 
 function requireParse$1 () {
-	if (hasRequiredParse$1) return parse$2;
+	if (hasRequiredParse$1) return parse$3;
 	hasRequiredParse$1 = 1;
 
 	const scanner = /*@__PURE__*/ requireScanner();
@@ -32244,8 +32250,8 @@ function requireParse$1 () {
 	    return result;
 	}
 
-	parse$2.parse = parse;
-	return parse$2;
+	parse$3.parse = parse;
+	return parse$3;
 }
 
 var hasRequiredMatchGraph;
@@ -82918,7 +82924,7 @@ var lib = {};
 
 var CSSStyleDeclaration = {};
 
-var parse$1 = {};
+var parse$2 = {};
 
 var CSSStyleSheet = {};
 
@@ -84453,7 +84459,7 @@ function requireCSSDocumentRule () {
 var hasRequiredParse;
 
 function requireParse () {
-	if (hasRequiredParse) return parse$1;
+	if (hasRequiredParse) return parse$2;
 	hasRequiredParse = 1;
 	//.CommonJS
 	var CSSOM = {};
@@ -84903,7 +84909,7 @@ function requireParse () {
 
 
 	//.CommonJS
-	parse$1.parse = CSSOM.parse;
+	parse$2.parse = CSSOM.parse;
 	// The following modules cannot be included sooner due to the mutual dependency with parse.js
 	CSSOM.CSSStyleSheet = requireCSSStyleSheet().CSSStyleSheet;
 	CSSOM.CSSStyleRule = requireCSSStyleRule().CSSStyleRule;
@@ -84920,7 +84926,7 @@ function requireParse () {
 	CSSOM.CSSValueExpression = requireCSSValueExpression().CSSValueExpression;
 	CSSOM.CSSDocumentRule = requireCSSDocumentRule().CSSDocumentRule;
 	///CommonJS
-	return parse$1;
+	return parse$2;
 }
 
 var hasRequiredCSSStyleDeclaration;
@@ -85946,6 +85952,31 @@ class HTMLPictureElement extends HTMLElement {
   }
 }
 
+// https://html.spec.whatwg.org/multipage/urls-and-fetching.html#document-base-url
+
+const parse$1 = (url, base) => {
+  try {
+    return new URL(url, base);
+  }
+  catch {
+    return null;
+  }
+};
+
+const documentBaseURL = document => {
+  const fallback = document.defaultView.location?.href || 'about:blank';
+  const base = document.querySelector('base[href]');
+  return (base && parse$1(base.getAttribute('href'), fallback)?.href) || fallback;
+};
+
+// https://html.spec.whatwg.org/multipage/links.html#dom-hyperlink-href
+const hyperlinkHref = element => {
+  const value = element.getAttribute('href');
+  if (value === null)
+    return '';
+  return parse$1(value, documentBaseURL(element.ownerDocument))?.href ?? value;
+};
+
 /**
  * @implements globalThis.HTMLAreaElement
  */
@@ -85953,6 +85984,9 @@ class HTMLAreaElement extends HTMLElement {
   constructor(ownerDocument, localName = 'area') {
     super(ownerDocument, localName);
   }
+
+  get href() { return hyperlinkHref(this); }
+  set href(value) { stringAttribute.set(this, 'href', value); }
 }
 
 /**
@@ -85983,12 +86017,12 @@ class HTMLAnchorElement extends HTMLElement {
     super(ownerDocument, localName);
   }
 
-  /* c8 ignore start */ // copy paste from img.src, already covered
-  get href() { return encodeURI(decodeURI(stringAttribute.get(this, 'href'))).trim(); }
-  set href(value) { stringAttribute.set(this, 'href', decodeURI(value)); }
+  get href() { return hyperlinkHref(this); }
+  set href(value) { stringAttribute.set(this, 'href', value); }
 
-  get download() { return encodeURI(decodeURI(stringAttribute.get(this, 'download'))); }
-  set download(value) { stringAttribute.set(this, 'download', decodeURI(value)); }
+  /* c8 ignore start */
+  get download() { return stringAttribute.get(this, 'download'); }
+  set download(value) { stringAttribute.set(this, 'download', value); }
 
   get target() { return stringAttribute.get(this, 'target'); }
   set target(value) { stringAttribute.set(this, 'target', value); }
@@ -86085,6 +86119,33 @@ class HTMLMarqueeElement extends HTMLElement {
   }
 }
 
+/**
+ * @implements globalThis.HTMLTableColElement
+ */
+class HTMLTableColElement extends HTMLElement {
+  constructor(ownerDocument, localName = 'col') {
+    super(ownerDocument, localName);
+  }
+}
+
+/**
+ * @implements globalThis.HTMLTableSectionElement
+ */
+class HTMLTableSectionElement extends HTMLElement {
+  constructor(ownerDocument, localName = 'tbody') {
+    super(ownerDocument, localName);
+  }
+}
+
+/**
+ * @implements globalThis.HTMLDialogElement
+ */
+class HTMLDialogElement extends HTMLElement {
+  constructor(ownerDocument, localName = 'dialog') {
+    super(ownerDocument, localName);
+  }
+}
+
 // https://html.spec.whatwg.org/multipage/indices.html#element-interfaces
 registerHTMLClass('area', HTMLAreaElement);
 registerHTMLClass('audio', HTMLAudioElement);
@@ -86092,10 +86153,12 @@ registerHTMLClass('base', HTMLBaseElement);
 registerHTMLClass('body', HTMLBodyElement);
 registerHTMLClass('br', HTMLBRElement);
 registerHTMLClass('caption', HTMLTableCaptionElement);
+registerHTMLClass(['col', 'colgroup'], HTMLTableColElement);
 registerHTMLClass('data', HTMLDataElement);
 registerHTMLClass('datalist', HTMLDataListElement);
 registerHTMLClass(['del', 'ins'], HTMLModElement);
 registerHTMLClass('details', HTMLDetailsElement);
+registerHTMLClass('dialog', HTMLDialogElement);
 registerHTMLClass('dir', HTMLDirectoryElement);
 registerHTMLClass('div', HTMLDivElement);
 registerHTMLClass('dl', HTMLDListElement);
@@ -86128,6 +86191,7 @@ registerHTMLClass(['blockquote', 'q'], HTMLQuoteElement);
 registerHTMLClass('span', HTMLSpanElement);
 registerHTMLClass('table', HTMLTableElement);
 registerHTMLClass(['td', 'th'], HTMLTableCellElement);
+registerHTMLClass(['tbody', 'tfoot', 'thead'], HTMLTableSectionElement);
 registerHTMLClass('tr', HTMLTableRowElement);
 registerHTMLClass('track', HTMLTrackElement);
 registerHTMLClass('ul', HTMLUListElement);
@@ -86201,7 +86265,10 @@ const HTMLClasses = {
   HTMLDetailsElement,
   HTMLSourceElement,
   HTMLTrackElement,
-  HTMLMarqueeElement
+  HTMLMarqueeElement,
+  HTMLTableColElement,
+  HTMLTableSectionElement,
+  HTMLDialogElement
 };
 
 // TODO: ensure all these are text only
@@ -86724,9 +86791,7 @@ const htmlElements = new Set([
   'figure', 'footer', 'header', 'hgroup', 'i', 'kbd', 'main', 'mark', 'nav',
   'nobr', 'noembed', 'noframes', 'noscript', 'plaintext', 'rb', 'rp', 'rt',
   'rtc', 'ruby', 's', 'samp', 'search', 'section', 'small', 'strike', 'strong',
-  'sub', 'summary', 'sup', 'tt', 'u', 'var', 'wbr',
-  // interfaces linkedom doesn't implement
-  'col', 'colgroup', 'dialog', 'tbody', 'tfoot', 'thead'
+  'sub', 'summary', 'sup', 'tt', 'u', 'var', 'wbr'
 ]);
 
 const asciiWhitespace = /[\t\n\f\r ]+/g;
@@ -87022,4 +87087,4 @@ function Document() {
 
 setPrototypeOf(Document, Document$1).prototype = Document$1.prototype;
 
-export { Attr, CDATASection, CharacterData, Comment, CustomEvent, DOMParser, Document, DocumentFragment, DocumentType, Element, GlobalEvent as Event, DOMEventTarget as EventTarget, Facades, HTMLAnchorElement, HTMLAreaElement, HTMLAudioElement, HTMLBRElement, HTMLBaseElement, HTMLBodyElement, HTMLButtonElement, HTMLCanvasElement, HTMLClasses, HTMLDListElement, HTMLDataElement, HTMLDataListElement, HTMLDetailsElement, HTMLDirectoryElement, HTMLDivElement, HTMLElement, HTMLEmbedElement, HTMLFieldSetElement, HTMLFontElement, HTMLFormElement, HTMLFrameElement, HTMLFrameSetElement, HTMLHRElement, HTMLHeadElement, HTMLHeadingElement, HTMLHtmlElement, HTMLIFrameElement, HTMLImageElement, HTMLInputElement, HTMLLIElement, HTMLLabelElement, HTMLLegendElement, HTMLLinkElement, HTMLMapElement, HTMLMarqueeElement, HTMLMediaElement, HTMLMenuElement, HTMLMetaElement, HTMLMeterElement, HTMLModElement, HTMLOListElement, HTMLObjectElement, HTMLOptGroupElement, HTMLOptionElement, HTMLOutputElement, HTMLParagraphElement, HTMLParamElement, HTMLPictureElement, HTMLPreElement, HTMLProgressElement, HTMLQuoteElement, HTMLScriptElement, HTMLSelectElement, HTMLSlotElement, HTMLSourceElement, HTMLSpanElement, HTMLStyleElement, HTMLTableCaptionElement, HTMLTableCellElement, HTMLTableElement, HTMLTableRowElement, HTMLTemplateElement, HTMLTextAreaElement, HTMLTimeElement, HTMLTitleElement, HTMLTrackElement, HTMLUListElement, HTMLUnknownElement, HTMLVideoElement, InputEvent, Node, NodeFilter, NodeList, SVGElement, ShadowRoot, Text, illegalConstructor, parseHTML, parseJSON, toJSON };
+export { Attr, CDATASection, CharacterData, Comment, CustomEvent, DOMParser, Document, DocumentFragment, DocumentType, Element, GlobalEvent as Event, DOMEventTarget as EventTarget, Facades, HTMLAnchorElement, HTMLAreaElement, HTMLAudioElement, HTMLBRElement, HTMLBaseElement, HTMLBodyElement, HTMLButtonElement, HTMLCanvasElement, HTMLClasses, HTMLDListElement, HTMLDataElement, HTMLDataListElement, HTMLDetailsElement, HTMLDialogElement, HTMLDirectoryElement, HTMLDivElement, HTMLElement, HTMLEmbedElement, HTMLFieldSetElement, HTMLFontElement, HTMLFormElement, HTMLFrameElement, HTMLFrameSetElement, HTMLHRElement, HTMLHeadElement, HTMLHeadingElement, HTMLHtmlElement, HTMLIFrameElement, HTMLImageElement, HTMLInputElement, HTMLLIElement, HTMLLabelElement, HTMLLegendElement, HTMLLinkElement, HTMLMapElement, HTMLMarqueeElement, HTMLMediaElement, HTMLMenuElement, HTMLMetaElement, HTMLMeterElement, HTMLModElement, HTMLOListElement, HTMLObjectElement, HTMLOptGroupElement, HTMLOptionElement, HTMLOutputElement, HTMLParagraphElement, HTMLParamElement, HTMLPictureElement, HTMLPreElement, HTMLProgressElement, HTMLQuoteElement, HTMLScriptElement, HTMLSelectElement, HTMLSlotElement, HTMLSourceElement, HTMLSpanElement, HTMLStyleElement, HTMLTableCaptionElement, HTMLTableCellElement, HTMLTableColElement, HTMLTableElement, HTMLTableRowElement, HTMLTableSectionElement, HTMLTemplateElement, HTMLTextAreaElement, HTMLTimeElement, HTMLTitleElement, HTMLTrackElement, HTMLUListElement, HTMLUnknownElement, HTMLVideoElement, InputEvent, Node, NodeFilter, NodeList, SVGElement, ShadowRoot, Text, illegalConstructor, parseHTML, parseJSON, toJSON };

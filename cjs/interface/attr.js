@@ -1,5 +1,5 @@
 'use strict';
-const {ATTRIBUTE_NODE} = require('../shared/constants.js');
+const {ATTRIBUTE_NODE, HTML_NAMESPACE} = require('../shared/constants.js');
 const {CHANGED, VALUE} = require('../shared/symbols.js');
 const {String, ignoreCase} = require('../shared/utils.js');
 const {attrAsJSON} = require('../shared/jsdon.js');
@@ -13,11 +13,17 @@ const {escape} = require('../shared/text-escaper.js');
 
 const QUOTE = /"/g;
 
-// A node's own toString serializes it, but WebIDL converts it to a DOMString
-// through Object.prototype.toString, as browsers do.
-const toDOMString = value => typeof value === 'string' ? value : (
-  value instanceof Node ? `[object ${value.constructor.name}]` : String(value)
-);
+// A node's own toString serializes it, but WebIDL converts it to a DOMString as
+// browsers do: links through their href, other nodes through Object.prototype.toString.
+const toDOMString = value => {
+  if (typeof value === 'string')
+    return value;
+  if (!(value instanceof Node))
+    return String(value);
+  const {localName, namespaceURI} = value;
+  return (localName === 'a' || localName === 'area') && namespaceURI === HTML_NAMESPACE ?
+    value.href : `[object ${value.constructor.name}]`;
+};
 exports.toDOMString = toDOMString;
 
 /**

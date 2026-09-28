@@ -67,6 +67,9 @@ const {HTMLDetailsElement} = require('../html/details-element.js');
 const {HTMLSourceElement} = require('../html/source-element.js');
 const {HTMLTrackElement} = require('../html/track-element.js');
 const {HTMLMarqueeElement} = require('../html/marquee-element.js');
+const {HTMLTableColElement} = require('../html/table-col-element.js');
+const {HTMLTableSectionElement} = require('../html/table-section-element.js');
+const {HTMLDialogElement} = require('../html/dialog-element.js');
 const {registerHTMLClass} = require('./register-html-class.js');
 
 // https://html.spec.whatwg.org/multipage/indices.html#element-interfaces
@@ -76,10 +79,12 @@ registerHTMLClass('base', HTMLBaseElement);
 registerHTMLClass('body', HTMLBodyElement);
 registerHTMLClass('br', HTMLBRElement);
 registerHTMLClass('caption', HTMLTableCaptionElement);
+registerHTMLClass(['col', 'colgroup'], HTMLTableColElement);
 registerHTMLClass('data', HTMLDataElement);
 registerHTMLClass('datalist', HTMLDataListElement);
 registerHTMLClass(['del', 'ins'], HTMLModElement);
 registerHTMLClass('details', HTMLDetailsElement);
+registerHTMLClass('dialog', HTMLDialogElement);
 registerHTMLClass('dir', HTMLDirectoryElement);
 registerHTMLClass('div', HTMLDivElement);
 registerHTMLClass('dl', HTMLDListElement);
@@ -112,6 +117,7 @@ registerHTMLClass(['blockquote', 'q'], HTMLQuoteElement);
 registerHTMLClass('span', HTMLSpanElement);
 registerHTMLClass('table', HTMLTableElement);
 registerHTMLClass(['td', 'th'], HTMLTableCellElement);
+registerHTMLClass(['tbody', 'tfoot', 'thead'], HTMLTableSectionElement);
 registerHTMLClass('tr', HTMLTableRowElement);
 registerHTMLClass('track', HTMLTrackElement);
 registerHTMLClass('ul', HTMLUListElement);
@@ -185,6 +191,9 @@ exports.HTMLDetailsElement = HTMLDetailsElement;
 exports.HTMLSourceElement = HTMLSourceElement;
 exports.HTMLTrackElement = HTMLTrackElement;
 exports.HTMLMarqueeElement = HTMLMarqueeElement;
+exports.HTMLTableColElement = HTMLTableColElement;
+exports.HTMLTableSectionElement = HTMLTableSectionElement;
+exports.HTMLDialogElement = HTMLDialogElement;
 
 const HTMLClasses = {
   HTMLElement,
@@ -254,6 +263,9 @@ const HTMLClasses = {
   HTMLDetailsElement,
   HTMLSourceElement,
   HTMLTrackElement,
-  HTMLMarqueeElement
+  HTMLMarqueeElement,
+  HTMLTableColElement,
+  HTMLTableSectionElement,
+  HTMLDialogElement
 };
 exports.HTMLClasses = HTMLClasses;
