@@ -1,7 +1,7 @@
 import {DOCUMENT_FRAGMENT_NODE} from './shared/constants.js';
+import {ATTRIBUTE_CHANGED} from './shared/symbols.js';
 import {defineProperties, getOwnPropertyDescriptors} from './shared/object.js';
 
-import {Attr} from './interface/attr.js';
 import {CharacterData} from './interface/character-data.js';
 import {Element} from './interface/element.js';
 
@@ -18,23 +18,6 @@ import {
   reset
 } from './shared/cache.js';
 
-// Attr
-const {value: {
-  get: getAttributeValue,
-  set: setAttributeValue
-}} = getOwnPropertyDescriptors(Attr.prototype);
-
-defineProperties(Attr.prototype, {
-  value: {
-    get: getAttributeValue,
-    set(value) {
-      reset(this.ownerElement);
-      setAttributeValue.call(this, value);
-    }
-  }
-});
-
-
 // CharacterData
 // TODO: is txtContent really necessary to patch here?
 const {remove: removeCharacterData} = CharacterData.prototype;
@@ -47,26 +30,20 @@ defineProperties(CharacterData.prototype, {
 
 
 // Element
-const elementProtoDescriptors = {};
-for (const name of [
-  'remove',
-  'setAttribute',
-  'setAttributeNS',
-  'setAttributeNode',
-  'setAttributeNodeNS',
-  'removeAttribute',
-  'removeAttributeNS',
-  'removeAttributeNode'
-]) {
-  const method = Element.prototype[name];
-  elementProtoDescriptors[name] = {
-    value() {
-      reset(this.parentNode);
-      return method.apply(this, arguments);
-    }
-  };
-}
-defineProperties(Element.prototype, elementProtoDescriptors);
+const {
+  remove: removeElement,
+  [ATTRIBUTE_CHANGED]: attributeChanged
+} = Element.prototype;
+defineProperties(Element.prototype, {
+  remove: {value() {
+    reset(this.parentNode);
+    removeElement.call(this);
+  }},
+  [ATTRIBUTE_CHANGED]: {value(attribute, value) {
+    reset(this);
+    attributeChanged.call(this, attribute, value);
+  }}
+});
 
 
 // ParentNode

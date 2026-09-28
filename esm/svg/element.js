@@ -1,7 +1,5 @@
 import {SVG_NAMESPACE} from '../shared/constants.js';
-import {STYLE} from '../shared/symbols.js';
-import {Element} from '../interface/element.js';
-import {styleOf} from '../interface/css-style-declaration.js';
+import {ElementCSSInlineStyle} from '../mixin/element-css-inline-style.js';
 
 const classNames = new WeakMap;
 
@@ -14,7 +12,7 @@ const animatedClass = element => ({
 /**
  * @implements globalThis.SVGElement
  */
-export class SVGElement extends Element {
+export class SVGElement extends ElementCSSInlineStyle {
   // https://svgwg.org/svg2-draft/types.html#__svg__SVGElement__ownerSVGElement
   get ownerSVGElement() {
     let {parentElement} = this;
@@ -40,9 +38,5 @@ export class SVGElement extends Element {
 
   get namespaceURI() {
     return SVG_NAMESPACE;
-  }
-
-  get style() {
-    return this[STYLE] || (this[STYLE] = styleOf(this));
   }
 }

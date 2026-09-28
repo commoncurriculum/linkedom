@@ -1,5 +1,5 @@
-// used in Attr to signal changes
-export const CHANGED = Symbol('changed');
+// used in Element for the attribute change steps of its class
+export const ATTRIBUTE_CHANGED = Symbol('attributeChanged');
 
 // used in Element to setup once classList
 export const CLASS_LIST = Symbol('classList');
@@ -60,6 +60,9 @@ export const PREV = Symbol('prev');
 
 // used to define various "private" properties
 export const PRIVATE = Symbol('private');
+
+// used in DOMTokenList and CSSStyleDeclaration to follow their attribute's value
+export const RESET = Symbol('reset');
 
 // used to define the CSSStyleSheet.sheet
 export const SHEET = Symbol('sheet');

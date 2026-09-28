@@ -1,10 +1,11 @@
-import {OWNER_ELEMENT} from '../shared/symbols.js';
-import {addClassTokens, setAttribute} from '../shared/attributes.js';
+import {OWNER_ELEMENT, RESET} from '../shared/symbols.js';
+import {setAttribute} from '../shared/attributes.js';
 
 import {Attr} from '../interface/attr.js';
 
 const {add, clear} = Set.prototype;
 const asciiWhitespace = /[\t\n\f\r ]/;
+const asciiWhitespaces = /[\t\n\f\r ]+/;
 
 const classAttribute = ownerElement => ownerElement.getAttributeNodeNS(null, 'class');
 
@@ -39,7 +40,15 @@ export class DOMTokenList extends Set {
     this[OWNER_ELEMENT] = ownerElement;
     const attribute = classAttribute(ownerElement);
     if (attribute)
-      addClassTokens(this, attribute.value);
+      this[RESET](attribute.value);
+  }
+
+  [RESET](value) {
+    clear.call(this);
+    for (const token of (value || '').split(asciiWhitespaces)) {
+      if (token)
+        add.call(this, token);
+    }
   }
 
   get length() { return this.size; }

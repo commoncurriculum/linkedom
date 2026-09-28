@@ -12,7 +12,9 @@ import {
   TEXT_NODE
 } from './constants.js';
 
-import {CREATE_ELEMENT, CUSTOM_ELEMENTS, DOCTYPE, END, MODE, NEXT, PREV, VALUE} from './symbols.js';
+import {
+  ATTRIBUTE_CHANGED, CREATE_ELEMENT, CUSTOM_ELEMENTS, DOCTYPE, END, MODE, NEXT, PREV, VALUE
+} from './symbols.js';
 import {getEnd, knownAdjacent, knownBoundaries, knownSiblings} from './utils.js';
 
 import {Attr} from '../interface/attr.js';
@@ -54,8 +56,10 @@ class Adapter {
     const attribute = new Attr(this.document, name, value, namespace || null, prefix || null, localName);
     attribute.ownerElement = element;
     knownSiblings(last, attribute, last[NEXT]);
-    if (this.active)
+    if (this.active) {
+      element[ATTRIBUTE_CHANGED](attribute, value);
       attributeChangedCallback(element, name, null, value);
+    }
   }
 
   appendChild(parentNode, node) {

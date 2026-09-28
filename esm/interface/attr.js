@@ -1,13 +1,10 @@
 import {ATTRIBUTE_NODE, HTML_NAMESPACE} from '../shared/constants.js';
-import {CHANGED, VALUE} from '../shared/symbols.js';
+import {VALUE} from '../shared/symbols.js';
 import {String, ignoreCase} from '../shared/utils.js';
 import {attrAsJSON} from '../shared/jsdon.js';
 import {attributeChanged} from '../shared/attributes.js';
 import {serializeAttribute} from '../shared/serialize-html.js';
 import {serializeXMLAttribute} from '../shared/serialize-xml.js';
-
-import {attributeChangedCallback as moAttributes} from './mutation-observer.js';
-import {attributeChangedCallback as ceAttributes} from './custom-element-registry.js';
 
 import {Node} from './node.js';
 
@@ -34,21 +31,16 @@ export class Attr extends Node {
     this.namespaceURI = namespaceURI;
     this.prefix = prefix;
     this[VALUE] = toDOMString(value);
-    this[CHANGED] = false;
   }
 
   get nodeName() { return this.name; }
 
   get value() { return this[VALUE]; }
   set value(newValue) {
-    const {[VALUE]: oldValue, name, ownerElement} = this;
+    const {[VALUE]: oldValue, ownerElement} = this;
     this[VALUE] = toDOMString(newValue);
-    this[CHANGED] = true;
-    if (ownerElement) {
-      attributeChanged(ownerElement, this, this[VALUE]);
-      moAttributes(ownerElement, name, oldValue);
-      ceAttributes(ownerElement, name, oldValue, this[VALUE]);
-    }
+    if (ownerElement)
+      attributeChanged(ownerElement, this, oldValue, this[VALUE]);
   }
 
   cloneNode() {

@@ -1,16 +1,13 @@
-// tarnish-css holds an element's declarations: stylo, Servo's CSS engine, compiled
-// to WebAssembly, so they parse, change and serialize as a browser's do, and as
-// tarnish's Rust DOM, which runs the same engine natively, has them.
-
 import {Declarations, initSync, propertyNames} from '../shared/css/engine.js';
 import wasm from '../shared/css/wasm.js';
-import {quietly, styleChanged} from '../shared/attributes.js';
+import {RESET, STYLE} from '../shared/symbols.js';
 
 import {toDOMString} from './attr.js';
 
 const ELEMENT = Symbol('element');
 const DECLARATIONS = Symbol('declarations');
 const INDICES = Symbol('indices');
+const TEXT = Symbol('text');
 
 const nullable = value => value === null ? '' : toDOMString(value);
 
@@ -42,7 +39,6 @@ const decode = base64 => {
 
 let started = false;
 const start = () => {
-  started = true;
   initSync({module: decode(wasm)});
   // https://drafts.csswg.org/cssom/#the-cssstyleproperties-interface
   for (const property of propertyNames()) {
@@ -52,6 +48,7 @@ const start = () => {
     if (property.includes('-'))
       defineProperty(property, property);
   }
+  started = true;
 };
 
 // Browsers expose the declared names as indexed properties too.
@@ -64,9 +61,11 @@ const indexed = style => {
   style[INDICES] = length;
 };
 
+// Setting TEXT first makes the attribute change this causes a no-op in RESET.
 const changed = style => {
   indexed(style);
-  styleChanged(style[ELEMENT], style.cssText);
+  style[TEXT] = style[DECLARATIONS].cssText();
+  style[ELEMENT].setAttribute('style', style[TEXT]);
 };
 
 /**
@@ -74,28 +73,32 @@ const changed = style => {
  */
 export class CSSStyleDeclaration {
   constructor(element) {
+    const text = element.getAttributeNS(null, 'style') || '';
     this[ELEMENT] = element;
-    this[DECLARATIONS] = null;
+    this[DECLARATIONS] = new Declarations(text);
+    this[TEXT] = text;
     this[INDICES] = 0;
+    indexed(this);
   }
 
-  get cssText() {
-    const declarations = this[DECLARATIONS];
-    return declarations ? declarations.cssText() : '';
-  }
-
-  set cssText(value) {
-    const css = nullable(value);
-    if (this[DECLARATIONS])
+  [RESET](value) {
+    const text = value || '';
+    if (text !== this[TEXT]) {
       this[DECLARATIONS].free();
-    this[DECLARATIONS] = css ? new Declarations(css) : null;
+      this[DECLARATIONS] = new Declarations(text);
+      this[TEXT] = text;
+      indexed(this);
+    }
+  }
+
+  get cssText() { return this[DECLARATIONS].cssText(); }
+  set cssText(value) {
+    this[DECLARATIONS].free();
+    this[DECLARATIONS] = new Declarations(nullable(value));
     changed(this);
   }
 
-  get length() {
-    const declarations = this[DECLARATIONS];
-    return declarations ? declarations.length : 0;
-  }
+  get length() { return this[DECLARATIONS].length; }
 
   get parentRule() { return null; }
 
@@ -103,30 +106,25 @@ export class CSSStyleDeclaration {
   set cssFloat(value) { this.setProperty('float', value); }
 
   item(index) {
-    const declarations = this[DECLARATIONS];
-    return (declarations && declarations.item(index >>> 0)) || '';
+    return this[DECLARATIONS].item(index >>> 0) || '';
   }
 
   getPropertyValue(property) {
-    const declarations = this[DECLARATIONS];
-    return declarations ? declarations.value(toDOMString(property)) : '';
+    return this[DECLARATIONS].value(toDOMString(property));
   }
 
   getPropertyPriority(property) {
-    const declarations = this[DECLARATIONS];
-    return declarations ? declarations.priority(toDOMString(property)) : '';
+    return this[DECLARATIONS].priority(toDOMString(property));
   }
 
   setProperty(property, value, priority = '') {
-    const declarations = this[DECLARATIONS] || (this[DECLARATIONS] = new Declarations(''));
-    if (declarations.set(toDOMString(property), nullable(value), nullable(priority)))
+    if (this[DECLARATIONS].set(toDOMString(property), nullable(value), nullable(priority)))
       changed(this);
   }
 
   removeProperty(property) {
-    const declarations = this[DECLARATIONS];
-    const value = declarations && declarations.remove(toDOMString(property));
-    if (value === undefined || value === null)
+    const value = this[DECLARATIONS].remove(toDOMString(property));
+    if (value === undefined)
       return '';
     changed(this);
     return value;
@@ -147,9 +145,5 @@ export class CSSStyleDeclaration {
 export const styleOf = element => {
   if (!started)
     start();
-  const style = new CSSStyleDeclaration(element);
-  const attribute = element.getAttributeNodeNS(null, 'style');
-  if (attribute)
-    quietly(() => { style.cssText = attribute.value; });
-  return style;
+  return element[STYLE] || (element[STYLE] = new CSSStyleDeclaration(element));
 };

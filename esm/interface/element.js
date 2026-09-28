@@ -18,9 +18,8 @@ import {
 } from '../shared/attributes.js';
 
 import {
-  CLASS_LIST, CONTENT, CREATE_ELEMENT, CUSTOM_ELEMENTS, DATASET, STYLE,
-  END, NEXT, PREV,
-  NAMESPACE, PREFIX
+  ATTRIBUTE_CHANGED, CLASS_LIST, CONTENT, CREATE_ELEMENT, CUSTOM_ELEMENTS, DATASET,
+  END, NEXT, PREV, NAMESPACE, PREFIX, RESET
 } from '../shared/symbols.js';
 
 import {
@@ -114,7 +113,6 @@ export class Element extends ParentNode {
     super(ownerDocument, localName, ELEMENT_NODE);
     this[CLASS_LIST] = null;
     this[DATASET] = null;
-    this[STYLE] = null;
   }
 
   // <Mixins>
@@ -361,6 +359,12 @@ export class Element extends ParentNode {
       return false;
     }
     return true;
+  }
+
+  // https://dom.spec.whatwg.org/#concept-element-attributes-change-ext
+  [ATTRIBUTE_CHANGED](attribute, value) {
+    if (attribute.localName === 'class' && attribute.namespaceURI === null)
+      this[CLASS_LIST]?.[RESET](value);
   }
   // </attributes>
 

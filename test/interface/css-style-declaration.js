@@ -54,3 +54,58 @@ assert(Array.from(divWithStyle.style).join(','), 'display', 'Array.from after ch
 divWithStyle.style.setProperty('color', 'green');
 assert([...divWithStyle.style].join(','), 'display,color', 'iterable after adding property');
 assert(Array.from(divWithStyle.style).join(','), 'display,color', 'Array.from after adding property');
+
+{
+  const {document} = parseHTML('<!doctype html><html><body><p style="color: red">p</p></body></html>');
+  const p = document.querySelector('p');
+  assert(p.style, p.style, 'one declaration block per element');
+  assert(p.style.cssText, 'color: red;');
+  p.removeAttribute('style');
+  assert(p.style.cssText, '', 'removing the attribute empties the declarations');
+  assert(p.style.length, 0);
+  assert(p.style[0], undefined, 'and their indices');
+  p.setAttribute('style', 'color: red; font-weight: bold');
+  assert(p.style.length, 2, 'setting it parses it');
+  assert(p.style[1], 'font-weight');
+  p.style = 'color: blue';
+  assert(p.getAttribute('style'), 'color: blue;', 'style forwards to cssText');
+  assert(p.style.length, 1);
+  assert(p.style[1], undefined);
+  assert(p.style.removeProperty('font-weight'), '', 'removing a missing property');
+  assert(p.getAttribute('style'), 'color: blue;', 'leaves the attribute alone');
+  p.style.cssText = null;
+  assert(p.getAttribute('style'), '', 'cssText null');
+
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  svg.style.fill = 'red';
+  assert(svg.outerHTML, '<rect style="fill: red;"></rect>', 'SVG elements have style');
+  const math = document.createElementNS('http://www.w3.org/1998/Math/MathML', 'mi');
+  math.setAttribute('style', 'color: red');
+  assert(math.style.color, 'red', 'MathML elements have style');
+  assert('style' in document.createElementNS('urn:x', 'x'), false, 'other elements do not');
+  assert('style' in document.createElementNS(null, 'x'), false);
+}
+
+{
+  // A custom element that restyles other elements while its own style
+  // attribute changes: none of those writes is dropped.
+  const {document, customElements, HTMLElement} = parseHTML('<!doctype html><html><body><p style="color: red">p</p><div></div></body></html>');
+  const p = document.querySelector('p');
+  const other = document.querySelector('div');
+  assert(p.style.color, 'red');
+  customElements.define('x-watch', class extends HTMLElement {
+    static get observedAttributes() { return ['style']; }
+    attributeChangedCallback() {
+      other.style.color = 'blue';
+      p.setAttribute('style', 'color: green');
+    }
+  });
+  const watch = document.createElement('x-watch');
+  document.body.appendChild(watch);
+  watch.style.color = 'black';
+  assert(watch.getAttribute('style'), 'color: black;');
+  assert(other.style.cssText, 'color: blue;');
+  assert(other.getAttribute('style'), 'color: blue;', 'a style write inside attributeChangedCallback reaches its attribute');
+  assert(p.getAttribute('style'), 'color: green');
+  assert(p.style.cssText, 'color: green;', 'an attribute write inside attributeChangedCallback reaches its style');
+}
