@@ -79,7 +79,7 @@ assert(withLocation.document.defaultView.location, location);
 assert(withLocation.document.baseURI, location.href);
 
 const withBase = parseHTML('<html><base href="http://base"></html>', {location});
-assert(withBase.document.documentElement.baseURI, 'http://base');
+assert(withBase.document.documentElement.baseURI, 'http://base/');
 
 assert((new DocumentFragment).baseURI, null);
 

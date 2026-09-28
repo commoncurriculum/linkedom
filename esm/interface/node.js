@@ -23,6 +23,7 @@ import {NEXT, PREV} from '../shared/symbols.js';
 import {ignoreCase} from '../shared/utils.js';
 import {outerHTML} from '../shared/serialize-html.js';
 import {serializeXML} from '../shared/serialize-xml.js';
+import {documentBaseURL} from '../shared/url.js';
 
 import {EventTarget} from './event-target.js';
 
@@ -109,19 +110,8 @@ export class Node extends EventTarget {
   get DOCUMENT_TYPE_NODE() { return DOCUMENT_TYPE_NODE; }
 
   get baseURI() {
-    const ownerDocument = this.nodeType === DOCUMENT_NODE ?
-                            this : this.ownerDocument;
-    if (ownerDocument) {
-      const base = ownerDocument.querySelector('base');
-      if (base)
-        return base.getAttribute('href');
-
-      const {location} = ownerDocument.defaultView;
-      if (location)
-        return location.href;
-    }
-
-    return null;
+    const document = this.nodeType === DOCUMENT_NODE ? this : this.ownerDocument;
+    return document ? documentBaseURL(document) : null;
   }
 
   /* c8 ignore start */

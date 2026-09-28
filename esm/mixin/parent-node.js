@@ -15,6 +15,7 @@ import {PRIVATE, END, NEXT, PREV, START, VALUE} from '../shared/symbols.js';
 
 import {prepareMatch} from '../shared/matches.js';
 import {previousSibling, nextSibling} from '../shared/node.js';
+import {baseChanged} from '../shared/url.js';
 import {getEnd, knownAdjacent, knownBoundaries, knownSegment, knownSiblings, localCase} from '../shared/utils.js';
 
 import {Node} from '../interface/node.js';
@@ -232,6 +233,7 @@ export class ParentNode extends Node {
         node.remove();
         node.parentNode = this;
         knownBoundaries(next[PREV], node, next);
+        baseChanged(this);
         moCallback(node, null);
         connectedCallback(node);
         break;
@@ -239,6 +241,7 @@ export class ParentNode extends Node {
         let {[PRIVATE]: parentNode, firstChild, lastChild} = node;
         if (firstChild) {
           knownSegment(next[PREV], firstChild, lastChild, next);
+          baseChanged(this);
           knownAdjacent(node, node[END]);
           if (parentNode)
             parentNode.replaceChildren();
