@@ -13,32 +13,33 @@ assert(node.style.getPropertyValue('color'), '', 'unset getPropertyValue returns
 node.style.cssText = 'background-color: blue; background-image: url("https://t.co/i.png");';
 assert(node.style.backgroundColor, 'blue', 'style getter');
 assert(node.style.backgroundImage, 'url("https://t.co/i.png")', 'style value with colon');
-assert(node.style.toString(), 'background-color:blue;background-image:url("https://t.co/i.png")', 'cssText setter');
+assert(node.style.toString(), '[object CSSStyleDeclaration]', 'toString');
+assert(node.style.cssText, 'background-color: blue; background-image: url("https://t.co/i.png");', 'cssText setter');
 assert([...node.style].join(','), 'background-color,background-image', 'iterable');
 assert(node.style.length, 2, 'style.length');
 assert(node.style[0], 'background-color', 'style[0]');
 node.getAttributeNode('style').value = 'color: red';
-assert(node.style.toString(), 'color:red', 'cssText indirect setter');
+assert(node.style.cssText, 'color: red;', 'cssText indirect setter');
 let style = document.createAttribute('style');
 node.setAttributeNode(style);
-assert(node.toString(), '<div></div>', 'cssText cleanup');
+assert(node.toString(), '<div style=""></div>', 'cssText cleanup');
 node.style.backgroundColor = 'green';
-assert(node.toString(), '<div style="background-color:green"></div>', 'cssText indirect property');
+assert(node.toString(), '<div style="background-color: green;"></div>', 'cssText indirect property');
 node.removeAttributeNode(style);
 node.style.color = 'green';
-assert(node.toString(), '<div style="color:green"></div>', 'cssText indirect setter again');
+assert(node.toString(), '<div style="color: green;"></div>', 'cssText indirect setter again');
 
 node.style.color = null;
-assert(node.toString(), '<div></div>', 'setter as null');
+assert(node.toString(), '<div style=""></div>', 'setter as null');
 node.id = '';
 node.className = '';
-assert(node.toString(), '<div></div>', 'setter as null');
+assert(node.toString(), '<div style="" id="" class=""></div>', 'setter as null');
 
 node.style.setProperty('background-color', 'purple');
-assert(node.toString(), '<div style="background-color:purple"></div>', 'setProperty');
+assert(node.toString(), '<div style="background-color: purple;" id="" class=""></div>', 'setProperty');
 assert(node.style.getPropertyValue('background-color'), 'purple', 'getPropertyValue');
 node.style.removeProperty('background-color')
-assert(node.toString(), '<div></div>', 'removeProperty');
+assert(node.toString(), '<div style="" id="" class=""></div>', 'removeProperty');
 
 /** @type {HTMLDivElement} */
 const divWithStyle = document.createElement('div');
