@@ -1,8 +1,8 @@
 'use strict';
-const {registerHTMLClass} = require('../shared/register-html-class.js');
 const {booleanAttribute} = require('../shared/attributes.js');
 
 const {HTMLElement} = require('./element.js');
+const {selectedOption} = require('./option-element.js');
 const {NodeList} = require('../interface/node-list.js');
 
 const tagName = 'select';
@@ -15,18 +15,20 @@ class HTMLSelectElement extends HTMLElement {
     super(ownerDocument, localName);
   }
 
+  // https://html.spec.whatwg.org/multipage/form-elements.html#concept-select-option-list
   get options() {
-    let children = new NodeList;
-    let {firstElementChild} = this;
-    while (firstElementChild) {
-      if (firstElementChild.tagName === 'OPTGROUP')
-        children.push(...firstElementChild.children);
-      else
-        children.push(firstElementChild);
-      firstElementChild = firstElementChild.nextElementSibling;
+    const options = new NodeList;
+    for (const child of this.children) {
+      if (child.localName === 'option')
+        options.push(child);
+      else if (child.localName === 'optgroup')
+        options.push(...child.children.filter(({localName}) => localName === 'option'));
     }
-    return children;
+    return options;
   }
+
+  get multiple() { return booleanAttribute.get(this, 'multiple'); }
+  set multiple(value) { booleanAttribute.set(this, 'multiple', value); }
 
   /* c8 ignore start */
   get disabled() { return booleanAttribute.get(this, 'disabled'); }
@@ -34,22 +36,15 @@ class HTMLSelectElement extends HTMLElement {
 
   get name() { return this.getAttribute('name'); }
   set name(value) { this.setAttribute('name', value); }
-
-  get multiple() { return booleanAttribute.get(this, 'multiple'); }
-  set multiple(value) { booleanAttribute.set(this, 'multiple', value); }
   /* c8 ignore stop */
 
   // https://html.spec.whatwg.org/multipage/form-elements.html#dom-select-value
-  // Without a selected option, a single select shows its first enabled one.
   get value() {
-    const {options} = this;
-    const option = options.find(option => option.selected) ||
-      (!this.multiple && options.find(option => !option.hasAttribute('disabled')));
+    const option = this.multiple ?
+      this.options.find(option => option.selected) :
+      selectedOption(this);
     return option ? option.value : '';
   }
 }
 
-registerHTMLClass(tagName, HTMLSelectElement);
-
 exports.HTMLSelectElement = HTMLSelectElement;
-

@@ -16,7 +16,5 @@ class Comment extends CharacterData {
     const {ownerDocument, [VALUE]: data} = this;
     return new Comment(ownerDocument, data);
   }
-
-  toString() { return `<!--${this[VALUE]}-->`; }
 }
 exports.Comment = Comment

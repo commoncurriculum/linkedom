@@ -1,12 +1,9 @@
 'use strict';
-// saxes is the namespace-aware XML parser jsdom uses; these handlers build
-// linkedom's nodes from its events the way jsdom builds its own.
-
 const {SaxesParser} = require('saxes');
 
 const {DOCUMENT_NODE} = require('./constants.js');
-const {CREATE_ELEMENT, END, PREV} = require('./symbols.js');
-const {knownBoundaries, knownSiblings} = require('./utils.js');
+const {CREATE_ELEMENT} = require('./symbols.js');
+const {linkAttribute, linkNode} = require('./utils.js');
 
 const {Attr} = require('../interface/attr.js');
 
@@ -26,12 +23,6 @@ const doctypeOf = (document, declaration) => {
       return document.createDocumentType(...parts(match));
   }
   return document.createDocumentType('html', '', '');
-};
-
-const append = (parentNode, node) => {
-  const end = parentNode[END];
-  node.parentNode = parentNode;
-  knownBoundaries(end[PREV], node, end);
 };
 
 /**
@@ -54,12 +45,12 @@ const parseXML = (root, xml, context = null) => {
   // Text outside a document's root element is not part of its tree.
   parser.on('text', data => {
     if (context || stack.length > 1)
-      append(current(), document.createTextNode(data));
+      linkNode(current(), document.createTextNode(data));
   });
-  parser.on('cdata', data => append(current(), document.createCDATASection(data)));
-  parser.on('comment', data => append(current(), document.createComment(data)));
+  parser.on('cdata', data => linkNode(current(), document.createCDATASection(data)));
+  parser.on('comment', data => linkNode(current(), document.createComment(data)));
   parser.on('doctype', declaration => {
-    append(current(), doctypeOf(document, declaration.trim()));
+    linkNode(current(), doctypeOf(document, declaration.trim()));
     for (const [, name, value] of declaration.matchAll(entities)) {
       if (!(name in parser.ENTITIES))
         parser.ENTITIES[name] = value;
@@ -69,12 +60,9 @@ const parseXML = (root, xml, context = null) => {
     const element = document[CREATE_ELEMENT](uri || null, local, prefix || null);
     for (const {local, uri, prefix, value} of Object.values(attributes)) {
       const name = prefix ? `${prefix}:${local}` : local;
-      const attribute = new Attr(document, name, value, uri || null, prefix || null, local);
-      attribute.ownerElement = element;
-      const end = element[END];
-      knownSiblings(end[PREV], attribute, end);
+      linkAttribute(element, new Attr(document, name, value, uri || null, prefix || null, local));
     }
-    append(current(), element);
+    linkNode(current(), element);
     stack.push(element);
   });
   parser.on('closetag', () => stack.pop());

@@ -1,18 +1,4 @@
-export const emptyAttributes: Set<string>;
-export function isClassAttribute({ localName, namespaceURI }: {
-    localName: any;
-    namespaceURI: any;
-}): boolean;
-export function quietly(update: any): void;
-export function isStyleAttribute({ localName, namespaceURI }: {
-    localName: any;
-    namespaceURI: any;
-}): boolean;
-export function resetStyle(element: any, value: any): void;
-export function styleChanged(element: any, cssText: any): void;
-export function attributeChanged(element: any, attribute: any, value: any): void;
-export function addClassTokens(tokens: any, value: any): void;
-export function resetClassList(element: any, value: any): void;
+export function attributeChanged(element: Element, attribute: Attr, oldValue: string | null, value: string | null): void;
 export function setAttribute(element: any, attribute: any): void;
 export function replaceAttribute(element: any, previous: any, attribute: any): void;
 export function removeAttribute(element: any, attribute: any): void;

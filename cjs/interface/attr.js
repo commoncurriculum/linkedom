@@ -1,17 +1,13 @@
 'use strict';
 const {ATTRIBUTE_NODE, HTML_NAMESPACE} = require('../shared/constants.js');
-const {CHANGED, VALUE} = require('../shared/symbols.js');
+const {VALUE} = require('../shared/symbols.js');
 const {String, ignoreCase} = require('../shared/utils.js');
 const {attrAsJSON} = require('../shared/jsdon.js');
-const {attributeChanged, emptyAttributes} = require('../shared/attributes.js');
-
-const {attributeChangedCallback: moAttributes} = require('./mutation-observer.js');
-const {attributeChangedCallback: ceAttributes} = require('./custom-element-registry.js');
+const {attributeChanged} = require('../shared/attributes.js');
+const {serializeAttribute} = require('../shared/serialize-html.js');
+const {serializeXMLAttribute} = require('../shared/serialize-xml.js');
 
 const {Node} = require('./node.js');
-const {escape} = require('../shared/text-escaper.js');
-
-const QUOTE = /"/g;
 
 // A node's own toString serializes it, but WebIDL converts it to a DOMString as
 // browsers do: links through their href, other nodes through Object.prototype.toString.
@@ -37,21 +33,16 @@ class Attr extends Node {
     this.namespaceURI = namespaceURI;
     this.prefix = prefix;
     this[VALUE] = toDOMString(value);
-    this[CHANGED] = false;
   }
 
   get nodeName() { return this.name; }
 
   get value() { return this[VALUE]; }
   set value(newValue) {
-    const {[VALUE]: oldValue, name, ownerElement} = this;
+    const {[VALUE]: oldValue, ownerElement} = this;
     this[VALUE] = toDOMString(newValue);
-    this[CHANGED] = true;
-    if (ownerElement) {
-      attributeChanged(ownerElement, this, this[VALUE]);
-      moAttributes(ownerElement, name, oldValue);
-      ceAttributes(ownerElement, name, oldValue, this[VALUE]);
-    }
+    if (ownerElement)
+      attributeChanged(ownerElement, this, oldValue, this[VALUE]);
   }
 
   cloneNode() {
@@ -60,12 +51,7 @@ class Attr extends Node {
   }
 
   toString() {
-    const {name, [VALUE]: value} = this;
-    if (emptyAttributes.has(name) && !value) {
-      return ignoreCase(this) ? name : `${name}=""`;
-    }
-    const escapedValue = (ignoreCase(this) ? value : escape(value)).replace(QUOTE, '&quot;');
-    return `${name}="${escapedValue}"`;
+    return ignoreCase(this) ? serializeAttribute(this) : serializeXMLAttribute(this);
   }
 
   toJSON() {

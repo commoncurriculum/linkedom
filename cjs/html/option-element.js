@@ -1,7 +1,6 @@
 'use strict';
 const {HTMLElement} = require('./element.js');
 const {booleanAttribute} = require('../shared/attributes.js');
-const {registerHTMLClass} = require('../shared/register-html-class.js');
 
 const tagName = 'option';
 
@@ -16,6 +15,32 @@ const selectOf = ({parentElement}) => {
     parentElement = parentElement.parentElement;
   return parentElement && parentElement.localName === 'select' ? parentElement : null;
 };
+
+const selectedness = option => option[SELECTEDNESS] ?? option.hasAttribute('selected');
+
+// https://html.spec.whatwg.org/multipage/form-elements.html#concept-option-disabled
+const disabled = option => {
+  const {parentElement} = option;
+  return option.hasAttribute('disabled') || (
+    parentElement.localName === 'optgroup' && parentElement.hasAttribute('disabled')
+  );
+};
+
+/**
+ * https://html.spec.whatwg.org/multipage/form-elements.html#selectedness-setting-algorithm
+ * @param {HTMLSelectElement} select a select without the multiple attribute
+ */
+const selectedOption = select => {
+  let selected = null, enabled = null;
+  for (const option of select.options) {
+    if (selectedness(option))
+      selected = option;
+    else if (!enabled && !disabled(option))
+      enabled = option;
+  }
+  return selected || enabled;
+};
+exports.selectedOption = selectedOption;
 
 /**
  * @implements globalThis.HTMLOptionElement
@@ -40,7 +65,8 @@ class HTMLOptionElement extends HTMLElement {
   set defaultSelected(value) { booleanAttribute.set(this, 'selected', value); }
 
   get selected() {
-    return this[SELECTEDNESS] === null ? this.defaultSelected : this[SELECTEDNESS];
+    const select = selectOf(this);
+    return select && !select.multiple ? selectedOption(select) === this : selectedness(this);
   }
   set selected(value) {
     this[SELECTEDNESS] = !!value;
@@ -53,7 +79,5 @@ class HTMLOptionElement extends HTMLElement {
     }
   }
 }
-
-registerHTMLClass(tagName, HTMLOptionElement);
 
 exports.HTMLOptionElement = HTMLOptionElement;

@@ -1,5 +1,4 @@
 'use strict';
-const {registerHTMLClass} = require('../shared/register-html-class.js');
 const {booleanAttribute} = require('../shared/attributes.js');
 
 const {HTMLElement} = require('./element.js');
@@ -25,7 +24,5 @@ class HTMLButtonElement extends HTMLElement {
   set type(value) { this.setAttribute('type', value); }
   /* c8 ignore stop */
 }
-
-registerHTMLClass(tagName, HTMLButtonElement);
 
 exports.HTMLButtonElement = HTMLButtonElement;

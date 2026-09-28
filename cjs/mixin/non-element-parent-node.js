@@ -5,6 +5,9 @@
 const {ELEMENT_NODE} = require('../shared/constants.js');
 const {END, NEXT} = require('../shared/symbols.js');
 const {nonElementAsJSON} = require('../shared/jsdon.js');
+const {ignoreCase} = require('../shared/utils.js');
+const {innerHTML} = require('../shared/serialize-html.js');
+const {serializeXML} = require('../shared/serialize-xml.js');
 
 const {ParentNode} = require('./parent-node.js');
 
@@ -31,8 +34,9 @@ class NonElementParentNode extends ParentNode {
   }
 
   toString() {
-    const {childNodes, localName} = this;
-    return `<${localName}>${childNodes.join('')}</${localName}>`;
+    const {localName} = this;
+    const children = ignoreCase(this) ? innerHTML(this) : serializeXML(this, false);
+    return `<${localName}>${children}</${localName}>`;
   }
 
   toJSON() {

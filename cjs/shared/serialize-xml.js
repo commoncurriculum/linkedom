@@ -1,8 +1,8 @@
 'use strict';
-// w3c-xmlserializer is jsdom's implementation of the DOM Parsing standard's
-// XML serialization.
-
 const produceXMLSerialization = (m => /* c8 ignore start */ m.__esModule ? m.default : m /* c8 ignore stop */)(require('w3c-xmlserializer'));
+const {serializeAttributeValue} = require('w3c-xmlserializer/lib/attributes.js');
+
+const {VALUE} = require('./symbols.js');
 
 /**
  * @param {Node} node
@@ -18,3 +18,7 @@ const serializeXML = (node, requireWellFormed) => {
   }
 };
 exports.serializeXML = serializeXML;
+
+const serializeXMLAttribute = attribute =>
+  `${attribute.name}="${serializeAttributeValue(attribute[VALUE], false)}"`;
+exports.serializeXMLAttribute = serializeXMLAttribute;

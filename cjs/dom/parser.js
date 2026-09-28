@@ -1,6 +1,6 @@
 'use strict';
 const {DOM_PARSER, GLOBALS} = require('../shared/symbols.js');
-const {parseFromString} = require('../shared/parse-from-string.js');
+const {parseDocument} = require('../shared/parse.js');
 
 const {HTMLDocument} = require('../html/document.js');
 const {SVGDocument} = require('../svg/document.js');
@@ -35,12 +35,12 @@ class DOMParser {
     if (isHTML) {
       if (markupLanguage === '...')
         markupLanguage = '<!doctype html><html><head></head><body></body></html>';
-      return parseFromString(document, true, markupLanguage == null ? '' : String(markupLanguage));
+      return parseDocument(document, markupLanguage == null ? '' : String(markupLanguage));
     }
     if (!markupLanguage)
       return document;
     try {
-      return parseFromString(document, false, String(markupLanguage));
+      return parseDocument(document, String(markupLanguage));
     }
     catch (error) {
       const failed = create();

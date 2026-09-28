@@ -1,5 +1,4 @@
 'use strict';
-const {registerHTMLClass} = require('../shared/register-html-class.js');
 const {booleanAttribute, stringAttribute} = require('../shared/attributes.js');
 
 const {HTMLElement} = require('./element.js');
@@ -34,7 +33,5 @@ class HTMLInputElement extends HTMLElement {
   set value(value) { stringAttribute.set(this, 'value', value); }
   /* c8 ignore stop */
 }
-
-registerHTMLClass(tagName, HTMLInputElement);
 
 exports.HTMLInputElement = HTMLInputElement;

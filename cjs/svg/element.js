@@ -1,8 +1,6 @@
 'use strict';
 const {SVG_NAMESPACE} = require('../shared/constants.js');
-const {STYLE} = require('../shared/symbols.js');
-const {Element} = require('../interface/element.js');
-const {styleOf} = require('../interface/css-style-declaration.js');
+const {ElementCSSInlineStyle} = require('../mixin/element-css-inline-style.js');
 
 const classNames = new WeakMap;
 
@@ -15,10 +13,16 @@ const animatedClass = element => ({
 /**
  * @implements globalThis.SVGElement
  */
-class SVGElement extends Element {
-  constructor(ownerDocument, localName, ownerSVGElement = null) {
-    super(ownerDocument, localName);
-    this.ownerSVGElement = ownerSVGElement;
+class SVGElement extends ElementCSSInlineStyle {
+  // https://svgwg.org/svg2-draft/types.html#__svg__SVGElement__ownerSVGElement
+  get ownerSVGElement() {
+    let {parentElement} = this;
+    while (parentElement) {
+      if (parentElement.localName === 'svg' && parentElement.namespaceURI === SVG_NAMESPACE)
+        return parentElement;
+      ({parentElement} = parentElement);
+    }
+    return null;
   }
 
   get className() {
@@ -35,10 +39,6 @@ class SVGElement extends Element {
 
   get namespaceURI() {
     return SVG_NAMESPACE;
-  }
-
-  get style() {
-    return this[STYLE] || (this[STYLE] = styleOf(this));
   }
 }
 exports.SVGElement = SVGElement

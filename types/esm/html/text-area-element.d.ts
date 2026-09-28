@@ -1,7 +1,7 @@
 /**
  * @implements globalThis.HTMLTextAreaElement
  */
-export class HTMLTextAreaElement extends TextElement implements globalThis.HTMLTextAreaElement {
+export class HTMLTextAreaElement extends HTMLElement implements globalThis.HTMLTextAreaElement {
     set disabled(value: any);
     get disabled(): any;
     set name(value: any);
@@ -13,4 +13,4 @@ export class HTMLTextAreaElement extends TextElement implements globalThis.HTMLT
     set value(content: string);
     get value(): string;
 }
-import { TextElement } from './text-element.js';
+import { HTMLElement } from './element.js';

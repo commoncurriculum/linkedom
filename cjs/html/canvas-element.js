@@ -1,7 +1,6 @@
 'use strict';
 const {IMAGE} = require('../shared/symbols.js');
 
-const {registerHTMLClass} = require('../shared/register-html-class.js');
 const {numericAttribute} = require('../shared/attributes.js');
 
 const Canvas = (require('../../commonjs/canvas.cjs'));
@@ -47,7 +46,5 @@ class HTMLCanvasElement extends HTMLElement {
     return this[IMAGE].toDataURL(...args);
   }
 }
-
-registerHTMLClass(tagName, HTMLCanvasElement);
 
 exports.HTMLCanvasElement = HTMLCanvasElement;

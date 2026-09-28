@@ -6,6 +6,7 @@ const {ELEMENT_NODE} = require('../shared/constants.js');
 const {NEXT, PREV} = require('../shared/symbols.js');
 
 const {getEnd, setAdjacent} = require('../shared/utils.js');
+const {baseChanged} = require('../shared/url.js');
 
 const {moCallback} = require('../interface/mutation-observer.js');
 const {disconnectedCallback} = require('../interface/custom-element-registry.js');
@@ -60,8 +61,10 @@ const remove = (prev, current, next) => {
   if (parentNode) {
     current.parentNode = null;
     moCallback(current, parentNode);
-    if (nodeType === ELEMENT_NODE)
+    if (nodeType === ELEMENT_NODE) {
+      baseChanged(parentNode);
       disconnectedCallback(current);
+    }
   }
 };
 exports.remove = remove;

@@ -1,3 +1,4 @@
+export function selectedOption(select: HTMLSelectElement): globalThis.HTMLOptionElement;
 /**
  * @implements globalThis.HTMLOptionElement
  */

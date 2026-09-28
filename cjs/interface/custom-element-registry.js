@@ -1,6 +1,6 @@
 'use strict';
 const {ELEMENT_NODE} = require('../shared/constants.js');
-const {END, NEXT, UPGRADE} = require('../shared/symbols.js');
+const {CUSTOM_ELEMENTS, END, NEXT, UPGRADE} = require('../shared/symbols.js');
 const {entries, setPrototypeOf} = require('../shared/object.js');
 const {shadowRoots} = require('../shared/shadow-roots.js');
 
@@ -11,6 +11,33 @@ exports.Classes = Classes;
 
 const customElements = new WeakMap;
 exports.customElements = customElements;
+
+// https://html.spec.whatwg.org/multipage/custom-elements.html#look-up-a-custom-element-definition
+const lookUp = ({registry}, localName, is) => {
+  for (const name of [localName, is]) {
+    const definition = name && registry.get(name);
+    if (definition && definition.localName === localName)
+      return definition;
+  }
+  return null;
+};
+
+/**
+ * @param {Document} document
+ * @param {Element} element a new HTML element
+ * @param {string?} is
+ */
+const constructCustomElement = (document, element, is) => {
+  const definition = lookUp(document[CUSTOM_ELEMENTS], element.localName, is);
+  if (definition) {
+    const {Class} = definition;
+    setPrototypeOf(element, Class.prototype);
+    document[UPGRADE] = {element, values: []};
+    new Class(document, element.localName);
+    customElements.set(element, {connected: false});
+  }
+};
+exports.constructCustomElement = constructCustomElement;
 
 const attributeChangedCallback = (element, attributeName, oldValue, newValue) => {
   if (
@@ -127,7 +154,7 @@ class CustomElementRegistry {
                element.getAttribute('is') === localName;
       } :
       element => element.localName === localName;
-    registry.set(localName, {Class, check});
+    registry.set(localName, {Class, check, localName: extend || localName});
     if (waiting.has(localName)) {
       for (const resolve of waiting.get(localName))
         resolve(Class);

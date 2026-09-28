@@ -15,7 +15,12 @@ export class Document extends NonElementParentNode implements globalThis.Documen
     createComment(textContent: any): Comment;
     createDocumentFragment(): DocumentFragment;
     createDocumentType(name: any, publicId: any, systemId: any): DocumentType;
-    createElement(localName: any): Element;
+    /**
+     * @param {string} localName
+     * @param {ElementCreationOptions} [options]
+     * @returns {any}
+     */
+    createElement(localName: string, options?: ElementCreationOptions): any;
     createRange(): Range;
     createTextNode(textContent: any): Text;
     createTreeWalker(root: any, whatToShow?: number): TreeWalker;
@@ -24,10 +29,9 @@ export class Document extends NonElementParentNode implements globalThis.Documen
     cloneNode(deep?: boolean): any;
     importNode(externalNode: any, ...args: any[]): any;
     querySelectorAll(selectors: any): any;
-    getElementsByTagNameNS(_: any, name: any): NodeList;
     createAttributeNS(namespace: any, qualifiedName: any): Attr;
-    createElementNS(namespace: any, qualifiedName: any, options: any): any;
-    [CREATE_ELEMENT](namespace: any, localName: any, prefix?: any): any;
+    createElementNS(namespace: any, qualifiedName: any, options: any): Element;
+    [CREATE_ELEMENT](namespace: any, localName: any, prefix?: any, is?: any): Element;
     [CUSTOM_ELEMENTS]: {
         active: boolean;
         registry: any;
@@ -50,11 +54,10 @@ import { Attr } from './attr.js';
 import { CDATASection } from './cdata-section.js';
 import { Comment } from './comment.js';
 import { DocumentFragment } from './document-fragment.js';
-import { Element } from './element.js';
 import { Range } from './range.js';
 import { Text } from './text.js';
 import { TreeWalker } from './tree-walker.js';
-import { NodeList } from './node-list.js';
+import { Element } from './element.js';
 import { CREATE_ELEMENT } from '../shared/symbols.js';
 import { CUSTOM_ELEMENTS } from '../shared/symbols.js';
 import { MUTATION_OBSERVER } from '../shared/symbols.js';

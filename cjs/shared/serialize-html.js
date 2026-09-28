@@ -1,8 +1,6 @@
 'use strict';
 // https://html.spec.whatwg.org/multipage/parsing.html#serialising-html-fragments
 
-const {escapeAttribute, escapeText} = require('entities/escape');
-
 const {
   ATTRIBUTE_NODE,
   CDATA_SECTION_NODE,
@@ -31,6 +29,25 @@ const rawTextElements = new Set([
   'style', 'script', 'xmp', 'iframe', 'noembed', 'noframes', 'plaintext'
 ]);
 
+const escapes = {'"': '&quot;', '&': '&amp;', '<': '&lt;', '>': '&gt;', '\xA0': '&nbsp;'};
+
+// https://html.spec.whatwg.org/multipage/parsing.html#escapingString
+const escaper = characters => value => {
+  characters.lastIndex = 0;
+  if (!characters.test(value))
+    return value;
+  let escaped = '', last = 0;
+  do {
+    const index = characters.lastIndex - 1;
+    escaped += value.slice(last, index) + escapes[value[index]];
+    last = index + 1;
+  } while (characters.test(value));
+  return escaped + value.slice(last);
+};
+
+const escapeText = escaper(/[&<>\xA0]/g);
+const escapeAttribute = escaper(/["&<>\xA0]/g);
+
 const isVoidElement = element =>
   voidElements.has(element.localName) && element.namespaceURI === HTML_NAMESPACE;
 exports.isVoidElement = isVoidElement;
@@ -57,6 +74,14 @@ const attributeName = ({namespaceURI, localName, name}) => {
   return name;
 };
 
+/**
+ * @param {Attr} attribute
+ * @returns {string} the attribute as its element's start tag writes it
+ */
+const serializeAttribute = attribute =>
+  `${attributeName(attribute)}="${escapeAttribute(attribute[VALUE])}"`;
+exports.serializeAttribute = serializeAttribute;
+
 const isRawText = ({parentNode}) =>
   parentNode !== null &&
   parentNode.nodeType === ELEMENT_NODE &&
@@ -70,47 +95,40 @@ const isRawText = ({parentNode}) =>
 const serialize = (first, last) => {
   let html = '';
   let node = first;
-  let isOpened = false;
   for (;;) {
-    if (node.nodeType === ATTRIBUTE_NODE)
-      html += ` ${attributeName(node)}="${escapeAttribute(node[VALUE])}"`;
-    else {
-      if (isOpened) {
-        html += '>';
-        isOpened = false;
-      }
-      switch (node.nodeType) {
-        case ELEMENT_NODE: {
-          const name = tagName(node);
-          html += `<${name}`;
-          const isVoid = isVoidElement(node);
-          if (isVoid || isTemplate(node)) {
-            let next = node[NEXT];
-            while (next.nodeType === ATTRIBUTE_NODE) {
-              html += ` ${attributeName(next)}="${escapeAttribute(next[VALUE])}"`;
-              next = next[NEXT];
-            }
-            html += isVoid ? '>' : `>${innerHTML(node[CONTENT])}</${name}>`;
-            node = node[END];
-          }
-          else
-            isOpened = true;
-          break;
+    switch (node.nodeType) {
+      case ELEMENT_NODE: {
+        const name = tagName(node);
+        html += `<${name}`;
+        let next = node[NEXT];
+        while (next.nodeType === ATTRIBUTE_NODE) {
+          html += ' ' + serializeAttribute(next);
+          next = next[NEXT];
         }
-        case NODE_END:
-          html += `</${tagName(node[START])}>`;
-          break;
-        case TEXT_NODE:
-        case CDATA_SECTION_NODE:
-          html += isRawText(node) ? node[VALUE] : escapeText(node[VALUE]);
-          break;
-        case COMMENT_NODE:
-          html += `<!--${node[VALUE]}-->`;
-          break;
-        case DOCUMENT_TYPE_NODE:
-          html += `<!DOCTYPE ${node.name}>`;
-          break;
+        html += '>';
+        if (isVoidElement(node))
+          node = node[END];
+        else if (isTemplate(node)) {
+          html += `${innerHTML(node[CONTENT])}</${name}>`;
+          node = node[END];
+        }
+        else
+          node = next[PREV];
+        break;
       }
+      case NODE_END:
+        html += `</${tagName(node[START])}>`;
+        break;
+      case TEXT_NODE:
+      case CDATA_SECTION_NODE:
+        html += isRawText(node) ? node[VALUE] : escapeText(node[VALUE]);
+        break;
+      case COMMENT_NODE:
+        html += `<!--${node[VALUE]}-->`;
+        break;
+      case DOCUMENT_TYPE_NODE:
+        html += `<!DOCTYPE ${node.name}>`;
+        break;
     }
     if (node === last)
       return html;

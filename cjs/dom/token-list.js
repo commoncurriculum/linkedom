@@ -1,11 +1,12 @@
 'use strict';
-const {OWNER_ELEMENT} = require('../shared/symbols.js');
-const {addClassTokens, setAttribute} = require('../shared/attributes.js');
+const {OWNER_ELEMENT, RESET} = require('../shared/symbols.js');
+const {setAttribute} = require('../shared/attributes.js');
 
 const {Attr} = require('../interface/attr.js');
 
 const {add, clear} = Set.prototype;
 const asciiWhitespace = /[\t\n\f\r ]/;
+const asciiWhitespaces = /[\t\n\f\r ]+/;
 
 const classAttribute = ownerElement => ownerElement.getAttributeNodeNS(null, 'class');
 
@@ -40,7 +41,15 @@ class DOMTokenList extends Set {
     this[OWNER_ELEMENT] = ownerElement;
     const attribute = classAttribute(ownerElement);
     if (attribute)
-      addClassTokens(this, attribute.value);
+      this[RESET](attribute.value);
+  }
+
+  [RESET](value) {
+    clear.call(this);
+    for (const token of (value || '').split(asciiWhitespaces)) {
+      if (token)
+        add.call(this, token);
+    }
   }
 
   get length() { return this.size; }

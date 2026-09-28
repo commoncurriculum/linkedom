@@ -14,8 +14,6 @@ export class Attr extends Node implements globalThis.Attr {
     cloneNode(): Attr;
     toJSON(): any[];
     [VALUE]: any;
-    [CHANGED]: boolean;
 }
 import { Node } from './node.js';
 import { VALUE } from '../shared/symbols.js';
-import { CHANGED } from '../shared/symbols.js';

@@ -21,6 +21,10 @@ const {
 } = require('../shared/constants.js');
 
 const {NEXT, PREV} = require('../shared/symbols.js');
+const {ignoreCase} = require('../shared/utils.js');
+const {outerHTML} = require('../shared/serialize-html.js');
+const {serializeXML} = require('../shared/serialize-xml.js');
+const {documentBaseURL} = require('../shared/url.js');
 
 const {EventTarget} = require('./event-target.js');
 
@@ -107,19 +111,8 @@ class Node extends EventTarget {
   get DOCUMENT_TYPE_NODE() { return DOCUMENT_TYPE_NODE; }
 
   get baseURI() {
-    const ownerDocument = this.nodeType === DOCUMENT_NODE ?
-                            this : this.ownerDocument;
-    if (ownerDocument) {
-      const base = ownerDocument.querySelector('base');
-      if (base)
-        return base.getAttribute('href');
-
-      const {location} = ownerDocument.defaultView;
-      if (location)
-        return location.href;
-    }
-
-    return null;
+    const document = this.nodeType === DOCUMENT_NODE ? this : this.ownerDocument;
+    return document ? documentBaseURL(document) : null;
   }
 
   /* c8 ignore start */
@@ -170,8 +163,11 @@ class Node extends EventTarget {
    * @returns The removed node.
    */
   removeChild(child) { return child }
-  toString() { return ''; }
   /* c8 ignore stop */
+
+  toString() {
+    return ignoreCase(this) ? outerHTML(this) : serializeXML(this, false);
+  }
 
   hasChildNodes() { return !!this.lastChild; }
   isSameNode(node) { return this === node; }

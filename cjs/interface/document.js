@@ -1,6 +1,6 @@
 'use strict';
 const {
-  DOCUMENT_NODE, DOCUMENT_FRAGMENT_NODE, DOCUMENT_TYPE_NODE, ELEMENT_NODE, HTML_NAMESPACE, MATHML_NAMESPACE, SVG_NAMESPACE
+  DOCUMENT_NODE, DOCUMENT_FRAGMENT_NODE, DOCUMENT_TYPE_NODE, ELEMENT_NODE, HTML_NAMESPACE
 } = require('../shared/constants.js');
 
 const {
@@ -9,21 +9,20 @@ const {
 
 const {Facades, illegalConstructor} = require('../shared/facades.js');
 const {HTMLClasses} = require('../shared/html-classes.js');
-const {htmlClasses} = require('../shared/register-html-class.js');
+const {elementInterface} = require('../shared/element-interface.js');
 const {asciiLowercase, validAttributeName, validElementName, validateAndExtract} = require('../shared/names.js');
 const {Mime} = require('../shared/mime.js');
 const {knownSiblings} = require('../shared/utils.js');
 const {assign, create, defineProperties, setPrototypeOf} = require('../shared/object.js');
+const {innerHTML} = require('../shared/serialize-html.js');
+const {serializeXML} = require('../shared/serialize-xml.js');
 
 const {NonElementParentNode} = require('../mixin/non-element-parent-node.js');
-
-const {SVGElement} = require('../svg/element.js');
-const {MathMLElement} = require('../mathml/element.js');
 
 const {Attr} = require('./attr.js');
 const {CDATASection} = require('./cdata-section.js')
 const {Comment} = require('./comment.js');
-const {CustomElementRegistry} = require('./custom-element-registry.js');
+const {CustomElementRegistry, constructCustomElement} = require('./custom-element-registry.js');
 const {CustomEvent} = require('./custom-event.js');
 const {DocumentFragment} = require('./document-fragment.js');
 const {DocumentType} = require('./document-type.js');
@@ -187,7 +186,27 @@ class Document extends NonElementParentNode {
   createComment(textContent) { return new Comment(this, textContent); }
   createDocumentFragment() { return new DocumentFragment(this); }
   createDocumentType(name, publicId, systemId) { return new DocumentType(this, name, publicId, systemId); }
-  createElement(localName) { return new Element(this, validElementName(String(localName))); }
+
+  /**
+   * @param {string} localName
+   * @param {ElementCreationOptions} [options]
+   * @returns {any}
+   */
+  createElement(localName, options) {
+    localName = validElementName(String(localName));
+    const isHTML = this[MIME].ignoreCase;
+    const is = isHTML && options && options.is || null;
+    const element = this[CREATE_ELEMENT](
+      isHTML ? HTML_NAMESPACE : null,
+      isHTML ? asciiLowercase(localName) : localName,
+      null,
+      is
+    );
+    if (is)
+      element.setAttribute('is', is);
+    return element;
+  }
+
   createRange() {
     const range = new Range;
     range.commonAncestorContainer = this;
@@ -267,7 +286,9 @@ class Document extends NonElementParentNode {
     return node;
   }
 
-  toString() { return this.childNodes.join(''); }
+  toString() {
+    return this[MIME].ignoreCase ? innerHTML(this) : serializeXML(this, false);
+  }
 
   querySelector(selectors) {
     return query(super.querySelector, this, selectors);
@@ -277,12 +298,6 @@ class Document extends NonElementParentNode {
     return query(super.querySelectorAll, this, selectors);
   }
 
-  /* c8 ignore start */
-  getElementsByTagNameNS(_, name) {
-    return this.getElementsByTagName(name);
-  }
-  /* c8 ignore stop */
-
   createAttributeNS(namespace, qualifiedName) {
     qualifiedName = String(qualifiedName);
     const {namespace: ns, prefix, localName} = validateAndExtract(namespace, qualifiedName, false);
@@ -291,27 +306,23 @@ class Document extends NonElementParentNode {
 
   createElementNS(namespace, qualifiedName, options) {
     const {namespace: ns, prefix, localName} = validateAndExtract(namespace, String(qualifiedName), true);
-    const element = this[CREATE_ELEMENT](ns, localName, prefix);
-    if (ns === HTML_NAMESPACE && options && options.is)
-      element.setAttribute('is', options.is);
+    const is = ns === HTML_NAMESPACE && options && options.is || null;
+    const element = this[CREATE_ELEMENT](ns, localName, prefix, is);
+    if (is)
+      element.setAttribute('is', is);
     return element;
   }
 
-  [CREATE_ELEMENT](namespace, localName, prefix = null) {
-    let element;
-    if (namespace === HTML_NAMESPACE) {
-      const Class = localName === asciiLowercase(localName) && htmlClasses.get(localName);
-      element = new (Class || HTMLClasses.HTMLElement)(this, localName);
-    }
-    else if (namespace === SVG_NAMESPACE)
-      element = new SVGElement(this, localName, null);
-    else if (namespace === MATHML_NAMESPACE)
-      element = new MathMLElement(this, localName);
-    else
-      element = new Element(this, localName);
-    element[NAMESPACE] = namespace;
+  // https://dom.spec.whatwg.org/#concept-create-element
+  [CREATE_ELEMENT](namespace, localName, prefix = null, is = null) {
+    const Class = elementInterface(namespace, localName);
+    const element = new Class(this, localName);
+    if (Class === Element)
+      element[NAMESPACE] = namespace;
     if (prefix)
       element[PREFIX] = prefix;
+    if (namespace === HTML_NAMESPACE && this[CUSTOM_ELEMENTS].active)
+      constructCustomElement(this, element, is);
     return element;
   }
 }

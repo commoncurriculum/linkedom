@@ -1,5 +1,6 @@
 export const Classes: WeakMap<WeakKey, any>;
 export const customElements: WeakMap<WeakKey, any>;
+export function constructCustomElement(document: Document, element: Element, is: string | null): void;
 export function attributeChangedCallback(element: any, attributeName: any, oldValue: any, newValue: any): void;
 export function connectedCallback(element: any): void;
 export function disconnectedCallback(element: any): void;

@@ -1,33 +1,24 @@
 'use strict';
-// TODO: ensure all these are text only
-// /^(?:plaintext|script|style|textarea|title|xmp)$/i
-
-const voidElements = {test: () => true};
 const Mime = {
   'text/html': {
     docType: '<!DOCTYPE html>',
-    ignoreCase: true,
-    voidElements: /^(?:area|base|br|col|embed|hr|img|input|keygen|link|menuitem|meta|param|source|track|wbr)$/i
+    ignoreCase: true
   },
   'image/svg+xml': {
     docType: '<?xml version="1.0" encoding="utf-8"?>',
-    ignoreCase: false,
-    voidElements
+    ignoreCase: false
   },
   'text/xml': {
     docType: '<?xml version="1.0" encoding="utf-8"?>',
-    ignoreCase: false,
-    voidElements
+    ignoreCase: false
   },
   'application/xml': {
     docType: '<?xml version="1.0" encoding="utf-8"?>',
-    ignoreCase: false,
-    voidElements
+    ignoreCase: false
   },
   'application/xhtml+xml': {
     docType: '<?xml version="1.0" encoding="utf-8"?>',
-    ignoreCase: false,
-    voidElements
+    ignoreCase: false
   }
 };
 exports.Mime = Mime;

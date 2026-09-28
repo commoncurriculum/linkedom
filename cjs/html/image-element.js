@@ -1,5 +1,4 @@
 'use strict';
-const {registerHTMLClass} = require('../shared/register-html-class.js');
 const {numericAttribute, stringAttribute} = require('../shared/attributes.js');
 
 const {HTMLElement} = require('./element.js');
@@ -37,7 +36,5 @@ class HTMLImageElement extends HTMLElement {
   set height(value) { numericAttribute.set(this, 'height', value); }
   /* c8 ignore stop */
 }
-
-registerHTMLClass(tagName, HTMLImageElement);
 
 exports.HTMLImageElement = HTMLImageElement;

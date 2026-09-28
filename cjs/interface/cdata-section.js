@@ -16,7 +16,5 @@ class CDATASection extends CharacterData {
     const {ownerDocument, [VALUE]: data} = this;
     return new CDATASection(ownerDocument, data);
   }
-
-  toString() { return `<![CDATA[${this[VALUE]}]]>`; }
 }
 exports.CDATASection = CDATASection

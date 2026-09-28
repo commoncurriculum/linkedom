@@ -1,6 +1,5 @@
 'use strict';
 const {HTMLElement} = require('./element.js');
-const {registerHTMLClass} = require('../shared/register-html-class.js');
 const { stringAttribute } = require('../shared/attributes.js');
 
 const tagName = 'meta'
@@ -31,6 +30,3 @@ class HTMLMetaElement extends HTMLElement {
 
 }
 exports.HTMLMetaElement = HTMLMetaElement
-
-registerHTMLClass(tagName, HTMLMetaElement);
-

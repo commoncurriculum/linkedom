@@ -1,5 +1,4 @@
 'use strict';
-const {registerHTMLClass} = require('../shared/register-html-class.js');
 const {stringAttribute} = require('../shared/attributes.js');
 
 const {HTMLElement} = require('./element.js');
@@ -28,7 +27,5 @@ class HTMLSourceElement extends HTMLElement {
   set type(value) { stringAttribute.set(this, 'type', value); }
   /* c8 ignore stop */
 }
-
-registerHTMLClass(tagName, HTMLSourceElement);
 
 exports.HTMLSourceElement = HTMLSourceElement;

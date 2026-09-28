@@ -1,6 +1,5 @@
 'use strict';
-// parse5 runs the HTML standard's tokenizer and tree builder; this adapter
-// builds linkedom's nodes straight into their linked list.
+// parse5's tree adapter, building linkedom's nodes straight into their linked list.
 
 const {parse, parseFragment} = require('parse5');
 
@@ -10,12 +9,13 @@ const {
   DOCUMENT_TYPE_NODE,
   ELEMENT_NODE,
   HTML_NAMESPACE,
-  SVG_NAMESPACE,
   TEXT_NODE
 } = require('./constants.js');
 
-const {CREATE_ELEMENT, CUSTOM_ELEMENTS, DOCTYPE, END, MODE, NEXT, PREV, VALUE} = require('./symbols.js');
-const {getEnd, knownAdjacent, knownBoundaries, knownSiblings} = require('./utils.js');
+const {
+  ATTRIBUTE_CHANGED, CREATE_ELEMENT, CUSTOM_ELEMENTS, DOCTYPE, END, MODE, NEXT, PREV, VALUE
+} = require('./symbols.js');
+const {getEnd, knownAdjacent, linkAttribute, linkNode} = require('./utils.js');
 
 const {Attr} = require('../interface/attr.js');
 const {attributeChangedCallback, connectedCallback} = require('../interface/custom-element-registry.js');
@@ -42,31 +42,22 @@ class Adapter {
   createTextNode(data) { return this.document.createTextNode(data); }
 
   createElement(localName, namespace, attrs) {
-    const {document, active} = this;
-    let element = null;
-    if (active && namespace === HTML_NAMESPACE) {
-      const {registry} = document[CUSTOM_ELEMENTS];
-      const is = localName.includes('-') ? localName : (attrs.find(({name}) => name === 'is')?.value || '');
-      if (is && registry.has(is)) {
-        const {Class} = registry.get(is);
-        element = new Class;
-        attrs = attrs.filter(({name}) => name !== 'is');
-      }
-    }
-    element = element || document[CREATE_ELEMENT](namespace, localName);
-    const end = element[END];
+    const is = this.active && namespace === HTML_NAMESPACE ?
+      attrs.find(({name}) => name === 'is')?.value ?? null : null;
+    const element = this.document[CREATE_ELEMENT](namespace, localName, null, is);
     for (const attr of attrs)
-      this.addAttribute(element, attr, end[PREV]);
+      this.addAttribute(element, attr);
     return element;
   }
 
   addAttribute(element, {name: localName, value, namespace, prefix}, last) {
     const name = prefix ? `${prefix}:${localName}` : localName;
     const attribute = new Attr(this.document, name, value, namespace || null, prefix || null, localName);
-    attribute.ownerElement = element;
-    knownSiblings(last, attribute, last[NEXT]);
-    if (this.active)
+    linkAttribute(element, attribute, last);
+    if (this.active) {
+      element[ATTRIBUTE_CHANGED](attribute, value);
       attributeChangedCallback(element, name, null, value);
+    }
   }
 
   appendChild(parentNode, node) {
@@ -74,14 +65,9 @@ class Adapter {
   }
 
   insertBefore(parentNode, node, reference) {
-    node.parentNode = parentNode;
-    knownBoundaries(reference[PREV], node, reference);
-    if (node.nodeType === ELEMENT_NODE) {
-      if (node.namespaceURI === SVG_NAMESPACE && parentNode.namespaceURI === SVG_NAMESPACE)
-        node.ownerSVGElement = parentNode.localName === 'svg' ? parentNode : parentNode.ownerSVGElement;
-      if (this.active)
-        connectedCallback(node);
-    }
+    linkNode(parentNode, node, reference);
+    if (this.active && node.nodeType === ELEMENT_NODE)
+      connectedCallback(node);
   }
 
   detachNode(node) {

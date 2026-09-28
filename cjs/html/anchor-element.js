@@ -1,5 +1,4 @@
 'use strict';
-const {registerHTMLClass} = require('../shared/register-html-class.js');
 const {stringAttribute} = require('../shared/attributes.js');
 const {hyperlinkHref} = require('../shared/url.js');
 
@@ -33,7 +32,5 @@ class HTMLAnchorElement extends HTMLElement {
   /* c8 ignore stop */
 
 }
-
-registerHTMLClass(tagName, HTMLAnchorElement);
 
 exports.HTMLAnchorElement = HTMLAnchorElement;

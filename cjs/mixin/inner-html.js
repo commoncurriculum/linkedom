@@ -1,35 +1,9 @@
 'use strict';
-const {ELEMENT_NODE, HTML_NAMESPACE} = require('../shared/constants.js');
-const {parseHTMLFragment} = require('../shared/parse-html.js');
-const {parseXML} = require('../shared/parse-xml.js');
+const {ELEMENT_NODE} = require('../shared/constants.js');
+const {parseFragment} = require('../shared/parse.js');
 const {innerHTML, isTemplate} = require('../shared/serialize-html.js');
 const {serializeXML} = require('../shared/serialize-xml.js');
 const {ignoreCase} = require('../shared/utils.js');
-
-/**
- * The context insertAdjacentHTML and the outerHTML setter parse in: a body
- * element in place of a non-element or an html element.
- * @param {Node} node
- * @returns {Element}
- */
-const adjacentContext = node => (
-  node.nodeType === ELEMENT_NODE &&
-  !(ignoreCase(node) && node.localName === 'html' && node.namespaceURI === HTML_NAMESPACE)
-) ? node : node.ownerDocument.createElement('body');
-exports.adjacentContext = adjacentContext;
-
-/**
- * @param {Element} context the element the markup is parsed for
- * @param {String} html
- * @returns {DocumentFragment}
- */
-const parseFragment = (context, html) => {
-  html = html === null ? '' : String(html);
-  if (ignoreCase(context))
-    return parseHTMLFragment(context, html);
-  return parseXML(context.ownerDocument.createDocumentFragment(), html, context);
-};
-exports.parseFragment = parseFragment;
 
 /**
  * @param {Node} node

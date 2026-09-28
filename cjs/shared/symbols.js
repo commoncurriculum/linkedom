@@ -1,7 +1,7 @@
 'use strict';
-// used in Attr to signal changes
-const CHANGED = Symbol('changed');
-exports.CHANGED = CHANGED;
+// used in Element for the attribute change steps of its class
+const ATTRIBUTE_CHANGED = Symbol('attributeChanged');
+exports.ATTRIBUTE_CHANGED = ATTRIBUTE_CHANGED;
 
 // used in Element to setup once classList
 const CLASS_LIST = Symbol('classList');
@@ -51,7 +51,7 @@ exports.MIME = MIME;
 const MUTATION_OBSERVER = Symbol('MutationObserver');
 exports.MUTATION_OBSERVER = MUTATION_OBSERVER;
 
-// used in Document to create parsed elements without validating their names
+// used in Document to create elements from names already validated
 const CREATE_ELEMENT = Symbol('createElement');
 exports.CREATE_ELEMENT = CREATE_ELEMENT;
 
@@ -59,7 +59,7 @@ exports.CREATE_ELEMENT = CREATE_ELEMENT;
 const MODE = Symbol('mode');
 exports.MODE = MODE;
 
-// used in Element for a namespace other than its class's default
+// used in Element for the namespace of an element whose class implies none
 const NAMESPACE = Symbol('namespace');
 exports.NAMESPACE = NAMESPACE;
 
@@ -82,6 +82,10 @@ exports.PREV = PREV;
 // used to define various "private" properties
 const PRIVATE = Symbol('private');
 exports.PRIVATE = PRIVATE;
+
+// used in DOMTokenList and CSSStyleDeclaration to follow their attribute's value
+const RESET = Symbol('reset');
+exports.RESET = RESET;
 
 // used to define the CSSStyleSheet.sheet
 const SHEET = Symbol('sheet');

@@ -18,7 +18,7 @@ const {
 } = require('../shared/attributes.js');
 
 const {
-  CLASS_LIST, DATASET, STYLE, END, NEXT, PREV, MIME, NAMESPACE, PREFIX
+  ATTRIBUTE_CHANGED, CLASS_LIST, CONTENT, CREATE_ELEMENT, CUSTOM_ELEMENTS, DATASET, END, NEXT, PREV, NAMESPACE, PREFIX, RESET
 } = require('../shared/symbols.js');
 
 const {
@@ -36,6 +36,7 @@ const {
 
 const {outerHTML} = require('../shared/serialize-html.js');
 const {serializeXML} = require('../shared/serialize-xml.js');
+const {fragmentContext, parseFragment} = require('../shared/parse.js');
 
 const {elementAsJSON} = require('../shared/jsdon.js');
 const {matches, prepareMatch} = require('../shared/matches.js');
@@ -45,7 +46,7 @@ const {isConnected, parentElement, previousSibling, nextSibling} = require('../s
 const {previousElementSibling, nextElementSibling} = require('../mixin/non-document-type-child-node.js');
 
 const {before, after, replaceWith, remove} = require('../mixin/child-node.js');
-const {adjacentContext, getInnerHtml, parseFragment, setInnerHtml} = require('../mixin/inner-html.js');
+const {getInnerHtml, setInnerHtml} = require('../mixin/inner-html.js');
 const {ParentNode} = require('../mixin/parent-node.js');
 
 const {DOMStringMap} = require('../dom/string-map.js');
@@ -65,16 +66,12 @@ const attributesHandler = {
   }
 };
 
-const create = (ownerDocument, element, localName)  => {
-  const clone = element.namespaceURI === HTML_NAMESPACE && ignoreCase(element) && localName === asciiLowercase(localName) ?
-    ownerDocument.createElement(localName) :
-    new element.constructor(ownerDocument, localName);
-  if (NAMESPACE in element)
-    clone[NAMESPACE] = element[NAMESPACE];
-  if (PREFIX in element)
-    clone[PREFIX] = element[PREFIX];
-  if ('ownerSVGElement' in element)
-    clone.ownerSVGElement = element.ownerSVGElement;
+// https://dom.spec.whatwg.org/#concept-node-clone
+const create = (ownerDocument, element, deep)  => {
+  const is = ownerDocument[CUSTOM_ELEMENTS].active ? element.getAttributeNS(null, 'is') : null;
+  const clone = ownerDocument[CREATE_ELEMENT](element.namespaceURI, element.localName, element.prefix, is);
+  if (deep && element[CONTENT])
+    clone[CONTENT] = element[CONTENT].cloneNode(true);
   return clone;
 };
 
@@ -106,6 +103,37 @@ const attributeNS = (element, namespace, localName) => {
   return null;
 };
 
+const invalidPosition = () => new DOMException(
+  'Must provide one of "beforebegin", "afterbegin", "beforeend", or "afterend".',
+  'SyntaxError'
+);
+
+// https://dom.spec.whatwg.org/#insert-adjacent
+const insertAdjacent = (element, position, node) => {
+  const {parentNode} = element;
+  switch (asciiLowercase(String(position))) {
+    case 'beforebegin':
+      if (!parentNode)
+        return null;
+      parentNode.insertBefore(node, element);
+      break;
+    case 'afterbegin':
+      element.insertBefore(node, element.firstChild);
+      break;
+    case 'beforeend':
+      element.insertBefore(node, null);
+      break;
+    case 'afterend':
+      if (!parentNode)
+        return null;
+      parentNode.insertBefore(node, element.nextSibling);
+      break;
+    default:
+      throw invalidPosition();
+  }
+  return node;
+};
+
 // </utils>
 
 /**
@@ -116,7 +144,6 @@ class Element extends ParentNode {
     super(ownerDocument, localName, ELEMENT_NODE);
     this[CLASS_LIST] = null;
     this[DATASET] = null;
-    this[STYLE] = null;
   }
 
   // <Mixins>
@@ -124,12 +151,7 @@ class Element extends ParentNode {
   get parentElement() { return parentElement(this); }
   get previousSibling() { return previousSibling(this); }
   get nextSibling() { return nextSibling(this); }
-  get namespaceURI() {
-    const {[NAMESPACE]: namespace} = this;
-    if (namespace !== undefined)
-      return namespace;
-    return this.ownerDocument[MIME].ignoreCase ? HTML_NAMESPACE : null;
-  }
+  get namespaceURI() { return this[NAMESPACE]; }
   get prefix() { return this[PREFIX] || null; }
 
   get previousElementSibling() { return previousElementSibling(this); }
@@ -244,8 +266,7 @@ class Element extends ParentNode {
       return;
     if (parentNode.nodeType === DOCUMENT_NODE)
       throw new DOMException('A document can\'t take markup in place of its element.', 'NoModificationAllowedError');
-    const context = parentNode.nodeType === ELEMENT_NODE ?
-      parentNode : this.ownerDocument.createElement('body');
+    const context = parentNode.nodeType === ELEMENT_NODE ? parentNode : fragmentContext(parentNode);
     parentNode.replaceChild(parseFragment(context, html), this);
   }
   // </contentRelated>
@@ -369,6 +390,12 @@ class Element extends ParentNode {
     }
     return true;
   }
+
+  // https://dom.spec.whatwg.org/#concept-element-attributes-change-ext
+  [ATTRIBUTE_CHANGED](attribute, value) {
+    if (attribute.localName === 'class' && attribute.namespaceURI === null)
+      this[CLASS_LIST]?.[RESET](value);
+  }
   // </attributes>
 
   // <ShadowDOM>
@@ -408,58 +435,41 @@ class Element extends ParentNode {
 
   // <insertAdjacent>
   insertAdjacentElement(position, element) {
-    const {parentElement} = this;
-    switch (position) {
-      case 'beforebegin':
-        if (parentElement) {
-          parentElement.insertBefore(element, this);
-          break;
-        }
-        return null;
-      case 'afterbegin':
-        this.insertBefore(element, this.firstChild);
-        break;
-      case 'beforeend':
-        this.insertBefore(element, null);
-        break;
-      case 'afterend':
-        if (parentElement) {
-          parentElement.insertBefore(element, this.nextSibling);
-          break;
-        }
-        return null;
-    }
-    return element;
+    return insertAdjacent(this, position, element);
   }
 
+  // https://html.spec.whatwg.org/multipage/dynamic-markup-insertion.html#dom-element-insertadjacenthtml
   insertAdjacentHTML(position, html) {
     let context = this;
     switch (asciiLowercase(String(position))) {
       case 'beforebegin':
-      case 'afterend': {
+      case 'afterend':
         context = this.parentNode;
         if (!context || context.nodeType === DOCUMENT_NODE)
           throw new DOMException('The element has no parent to take the markup.', 'NoModificationAllowedError');
         break;
-      }
+      case 'afterbegin':
+      case 'beforeend':
+        break;
+      default:
+        throw invalidPosition();
     }
-    this.insertAdjacentElement(position, parseFragment(adjacentContext(context), html));
+    insertAdjacent(this, position, parseFragment(fragmentContext(context), html));
   }
 
   insertAdjacentText(position, text) {
-    const node = this.ownerDocument.createTextNode(text);
-    this.insertAdjacentElement(position, node);
+    insertAdjacent(this, position, this.ownerDocument.createTextNode(text));
   }
   // </insertAdjacent>
 
   cloneNode(deep = false) {
-    const {ownerDocument, localName} = this;
+    const {ownerDocument} = this;
     const addNext = next => {
       next.parentNode = parentNode;
       knownAdjacent($next, next);
       $next = next;
     };
-    const clone = create(ownerDocument, this, localName);
+    const clone = create(ownerDocument, this, deep);
     let parentNode = clone, $next = clone;
     let {[NEXT]: next, [END]: prev} = this;
     while (next !== prev && (deep || next.nodeType === ATTRIBUTE_NODE)) {
@@ -470,7 +480,7 @@ class Element extends ParentNode {
           parentNode = parentNode.parentNode;
           break;
         case ELEMENT_NODE: {
-          const node = create(ownerDocument, next, next.localName);
+          const node = create(ownerDocument, next, true);
           addNext(node);
           parentNode = node;
           break;
@@ -494,20 +504,11 @@ class Element extends ParentNode {
   }
 
   // <custom>
-  toString() {
-    return ignoreCase(this) ? outerHTML(this) : serializeXML(this, false);
-  }
-
   toJSON() {
     const json = [];
     elementAsJSON(this, json);
     return json;
   }
   // </custom>
-
-
-  /* c8 ignore start */
-  getElementsByTagNameNS(_, name) { return this.getElementsByTagName(name); }
-  /* c8 ignore stop */
 }
 exports.Element = Element
