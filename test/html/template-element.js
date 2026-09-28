@@ -54,3 +54,24 @@ const docWithTemplateAttribute = parseHTML(`<div template="anything"><p>not insi
 
 assert(docWithTemplateAttribute.querySelector('*').tagName, 'P');
 assert(docWithTemplateAttribute.querySelectorAll('*').length, 1);
+
+{
+  const {document} = parseHTML('<!doctype html><html><body><div id="d"><template id="t"><p>x</p><template><i>y</i></template></template></div></body></html>');
+  const div = document.getElementById('d');
+  const markup = '<div id="d"><template id="t"><p>x</p><template><i>y</i></template></template></div>';
+  assert(div.outerHTML, markup);
+
+  const clone = div.cloneNode(true);
+  assert(clone.outerHTML, markup, 'a deep clone copies a descendant template\'s contents');
+  const cloned = clone.firstChild;
+  assert(cloned.content !== document.getElementById('t').content, true, 'into a contents of its own');
+  assert(cloned.content.firstChild !== document.getElementById('t').content.firstChild, true, 'as copies');
+  cloned.content.firstChild.textContent = 'changed';
+  assert(document.getElementById('t').innerHTML, '<p>x</p><template><i>y</i></template>', 'leaving the original alone');
+
+  assert(document.importNode(div, true).outerHTML, markup, 'importNode');
+  assert(document.cloneNode(true).toString(), document.toString(), 'document.cloneNode');
+  assert(document.getElementById('t').cloneNode(true).outerHTML, '<template id="t"><p>x</p><template><i>y</i></template></template>', 'a template itself');
+  assert(document.getElementById('t').cloneNode().outerHTML, '<template id="t"></template>', 'a shallow clone has empty contents');
+  assert(div.cloneNode().outerHTML, '<div id="d"></div>', 'a shallow clone of its parent');
+}

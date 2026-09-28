@@ -18,15 +18,6 @@ class HTMLTemplateElement extends HTMLElement {
   get content() {
     return this[CONTENT];
   }
-
-  cloneNode(deep = false) {
-    const clone = super.cloneNode(deep);
-    if (deep) {
-      for (const child of this[CONTENT].childNodes)
-        clone[CONTENT].appendChild(child.cloneNode(true));
-    }
-    return clone;
-  }
 }
 
 registerHTMLClass(tagName, HTMLTemplateElement);

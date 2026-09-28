@@ -18,7 +18,7 @@ import {
 } from '../shared/attributes.js';
 
 import {
-  CLASS_LIST, DATASET, STYLE,
+  CLASS_LIST, CONTENT, DATASET, STYLE,
   END, NEXT, PREV,
   MIME, NAMESPACE, PREFIX
 } from '../shared/symbols.js';
@@ -67,7 +67,7 @@ const attributesHandler = {
   }
 };
 
-const create = (ownerDocument, element, localName)  => {
+const create = (ownerDocument, element, localName, deep)  => {
   const clone = element.namespaceURI === HTML_NAMESPACE && ignoreCase(element) && localName === asciiLowercase(localName) ?
     ownerDocument.createElement(localName) :
     new element.constructor(ownerDocument, localName);
@@ -75,6 +75,8 @@ const create = (ownerDocument, element, localName)  => {
     clone[NAMESPACE] = element[NAMESPACE];
   if (PREFIX in element)
     clone[PREFIX] = element[PREFIX];
+  if (deep && element[CONTENT])
+    clone[CONTENT] = element[CONTENT].cloneNode(true);
   return clone;
 };
 
@@ -459,7 +461,7 @@ export class Element extends ParentNode {
       knownAdjacent($next, next);
       $next = next;
     };
-    const clone = create(ownerDocument, this, localName);
+    const clone = create(ownerDocument, this, localName, deep);
     let parentNode = clone, $next = clone;
     let {[NEXT]: next, [END]: prev} = this;
     while (next !== prev && (deep || next.nodeType === ATTRIBUTE_NODE)) {
@@ -470,7 +472,7 @@ export class Element extends ParentNode {
           parentNode = parentNode.parentNode;
           break;
         case ELEMENT_NODE: {
-          const node = create(ownerDocument, next, next.localName);
+          const node = create(ownerDocument, next, next.localName, true);
           addNext(node);
           parentNode = node;
           break;
