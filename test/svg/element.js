@@ -47,3 +47,31 @@ assert(svg.getAttribute('class'), 'a b c');
 svg.setAttribute('class', 'd e');
 assert(svg.getAttribute('class'), 'd e');
 assert(svg.namespaceURI, 'http://www.w3.org/2000/svg');
+
+{
+  const {document} = parseHTML('<!doctype html><html><body><svg><g><rect></rect></g><foreignObject><div><svg><circle></circle></svg></div></foreignObject></svg></body></html>');
+  const svg = document.querySelector('svg');
+  const rect = document.querySelector('rect');
+  assert(rect.ownerSVGElement, svg, 'the nearest svg ancestor, through a g');
+
+  const inner = document.querySelector('div > svg');
+  assert(inner.ownerSVGElement, svg, 'an svg inside HTML inside an svg has the outer svg');
+  assert(inner.firstChild.ownerSVGElement, inner, 'the nearest svg wins');
+
+  const clone = svg.cloneNode(true);
+  assert(clone.querySelector('rect').ownerSVGElement, clone, 'a deep clone points at its own svg');
+  assert(clone.ownerSVGElement, null, 'a cloned outermost svg has none');
+
+  const SVG = 'http://www.w3.org/2000/svg';
+  const line = document.createElementNS(SVG, 'line');
+  assert(line.ownerSVGElement, null, 'a created element has none until inserted');
+  svg.firstChild.appendChild(line);
+  assert(line.ownerSVGElement, svg, 'an element inserted through the API has one');
+  inner.appendChild(line);
+  assert(line.ownerSVGElement, inner, 'moving it moves its svg');
+  line.remove();
+  assert(line.ownerSVGElement, null, 'removing it clears it');
+
+  const svgDocument = (new DOMParser).parseFromString('<svg xmlns="http://www.w3.org/2000/svg"><g><path/></g></svg>', 'image/svg+xml');
+  assert(svgDocument.querySelector('path').ownerSVGElement, svgDocument.documentElement, 'XML-parsed SVG');
+}

@@ -9,7 +9,6 @@ import {
   DOCUMENT_TYPE_NODE,
   ELEMENT_NODE,
   HTML_NAMESPACE,
-  SVG_NAMESPACE,
   TEXT_NODE
 } from './constants.js';
 
@@ -75,12 +74,8 @@ class Adapter {
   insertBefore(parentNode, node, reference) {
     node.parentNode = parentNode;
     knownBoundaries(reference[PREV], node, reference);
-    if (node.nodeType === ELEMENT_NODE) {
-      if (node.namespaceURI === SVG_NAMESPACE && parentNode.namespaceURI === SVG_NAMESPACE)
-        node.ownerSVGElement = parentNode.localName === 'svg' ? parentNode : parentNode.ownerSVGElement;
-      if (this.active)
-        connectedCallback(node);
-    }
+    if (this.active && node.nodeType === ELEMENT_NODE)
+      connectedCallback(node);
   }
 
   detachNode(node) {

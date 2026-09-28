@@ -309,7 +309,7 @@ export class Document extends NonElementParentNode {
       element = new (Class || HTMLClasses.HTMLElement)(this, localName);
     }
     else if (namespace === SVG_NAMESPACE)
-      element = new SVGElement(this, localName, null);
+      element = new SVGElement(this, localName);
     else if (namespace === MATHML_NAMESPACE)
       element = new MathMLElement(this, localName);
     else

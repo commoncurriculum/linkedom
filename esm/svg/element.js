@@ -15,9 +15,15 @@ const animatedClass = element => ({
  * @implements globalThis.SVGElement
  */
 export class SVGElement extends Element {
-  constructor(ownerDocument, localName, ownerSVGElement = null) {
-    super(ownerDocument, localName);
-    this.ownerSVGElement = ownerSVGElement;
+  // https://svgwg.org/svg2-draft/types.html#__svg__SVGElement__ownerSVGElement
+  get ownerSVGElement() {
+    let {parentElement} = this;
+    while (parentElement) {
+      if (parentElement.localName === 'svg' && parentElement.namespaceURI === SVG_NAMESPACE)
+        return parentElement;
+      ({parentElement} = parentElement);
+    }
+    return null;
   }
 
   get className() {

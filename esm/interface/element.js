@@ -75,8 +75,6 @@ const create = (ownerDocument, element, localName)  => {
     clone[NAMESPACE] = element[NAMESPACE];
   if (PREFIX in element)
     clone[PREFIX] = element[PREFIX];
-  if ('ownerSVGElement' in element)
-    clone.ownerSVGElement = element.ownerSVGElement;
   return clone;
 };
 

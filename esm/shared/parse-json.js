@@ -62,7 +62,7 @@ export const parseJSON = value => {
         const localName = array[i++];
         const isSVG = svg || localName === 'svg' || localName === 'SVG';
         const element = isSVG ?
-                          new SVGElement(document, localName, parentNode.ownerSVGElement || null) :
+                          new SVGElement(document, localName) :
                           createHTMLElement(document, localName);
         knownBoundaries(end[PREV], element, end);
         element.parentNode = parentNode;
