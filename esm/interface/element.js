@@ -103,6 +103,37 @@ const attributeNS = (element, namespace, localName) => {
   return null;
 };
 
+const invalidPosition = () => new DOMException(
+  'Must provide one of "beforebegin", "afterbegin", "beforeend", or "afterend".',
+  'SyntaxError'
+);
+
+// https://dom.spec.whatwg.org/#insert-adjacent
+const insertAdjacent = (element, position, node) => {
+  const {parentNode} = element;
+  switch (asciiLowercase(String(position))) {
+    case 'beforebegin':
+      if (!parentNode)
+        return null;
+      parentNode.insertBefore(node, element);
+      break;
+    case 'afterbegin':
+      element.insertBefore(node, element.firstChild);
+      break;
+    case 'beforeend':
+      element.insertBefore(node, null);
+      break;
+    case 'afterend':
+      if (!parentNode)
+        return null;
+      parentNode.insertBefore(node, element.nextSibling);
+      break;
+    default:
+      throw invalidPosition();
+  }
+  return node;
+};
+
 // </utils>
 
 /**
@@ -405,47 +436,30 @@ export class Element extends ParentNode {
 
   // <insertAdjacent>
   insertAdjacentElement(position, element) {
-    const {parentElement} = this;
-    switch (position) {
-      case 'beforebegin':
-        if (parentElement) {
-          parentElement.insertBefore(element, this);
-          break;
-        }
-        return null;
-      case 'afterbegin':
-        this.insertBefore(element, this.firstChild);
-        break;
-      case 'beforeend':
-        this.insertBefore(element, null);
-        break;
-      case 'afterend':
-        if (parentElement) {
-          parentElement.insertBefore(element, this.nextSibling);
-          break;
-        }
-        return null;
-    }
-    return element;
+    return insertAdjacent(this, position, element);
   }
 
+  // https://html.spec.whatwg.org/multipage/dynamic-markup-insertion.html#dom-element-insertadjacenthtml
   insertAdjacentHTML(position, html) {
     let context = this;
     switch (asciiLowercase(String(position))) {
       case 'beforebegin':
-      case 'afterend': {
+      case 'afterend':
         context = this.parentNode;
         if (!context || context.nodeType === DOCUMENT_NODE)
           throw new DOMException('The element has no parent to take the markup.', 'NoModificationAllowedError');
         break;
-      }
+      case 'afterbegin':
+      case 'beforeend':
+        break;
+      default:
+        throw invalidPosition();
     }
-    this.insertAdjacentElement(position, parseFragment(adjacentContext(context), html));
+    insertAdjacent(this, position, parseFragment(adjacentContext(context), html));
   }
 
   insertAdjacentText(position, text) {
-    const node = this.ownerDocument.createTextNode(text);
-    this.insertAdjacentElement(position, node);
+    insertAdjacent(this, position, this.ownerDocument.createTextNode(text));
   }
   // </insertAdjacent>
 

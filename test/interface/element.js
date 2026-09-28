@@ -114,3 +114,56 @@ const xmlDocWithEmptyAttrFromSet = parser.parseFromString(`<hierarchy><android.v
 assert(xmlDocWithEmptyAttrFromSet.firstChild.getAttribute('style'), '');
 assert(xmlDocWithEmptyAttrFromSet.firstChild.outerHTML, '<android.view.View style=""/>');
 assert(xmlDocWithEmptyAttrFromSet.innerHTML, '<android.view.View style=""/>');
+
+{
+  const {document} = parseHTML('<!doctype html><html><body><div id="d"><p>p</p></div></body></html>');
+  const div = document.getElementById('d');
+  const p = div.firstChild;
+
+  p.insertAdjacentHTML('BeforeEnd', '<b>1</b>');
+  p.insertAdjacentHTML('AFTERBEGIN', '<i>0</i>');
+  p.insertAdjacentHTML('beforeBegin', '<u>a</u>');
+  p.insertAdjacentHTML('AfterEnd', '<s>z</s>');
+  assert(div.innerHTML, '<u>a</u><p><i>0</i>p<b>1</b></p><s>z</s>', 'insertAdjacentHTML matches positions case-insensitively');
+
+  p.insertAdjacentText('BEFOREEND', '<2>');
+  assert(p.innerHTML, '<i>0</i>p<b>1</b>&lt;2&gt;', 'insertAdjacentText too');
+  const em = document.createElement('em');
+  assert(p.insertAdjacentElement('AfterBegin', em), em, 'insertAdjacentElement too');
+  assert(p.firstChild, em);
+
+  for (const [name, call] of [
+    ['insertAdjacentHTML', position => p.insertAdjacentHTML(position, '<q></q>')],
+    ['insertAdjacentText', position => p.insertAdjacentText(position, 'q')],
+    ['insertAdjacentElement', position => p.insertAdjacentElement(position, document.createElement('q'))]
+  ]) {
+    for (const position of ['bogus', '', 'before begin', 'beforebegin ']) {
+      try {
+        call(position);
+        assert(true, false, `${name}(${JSON.stringify(position)}) should throw`);
+      }
+      catch (error) {
+        assert(error.name, 'SyntaxError', `${name}(${JSON.stringify(position)}) throws a SyntaxError`);
+        assert(error.message, 'Must provide one of "beforebegin", "afterbegin", "beforeend", or "afterend".');
+      }
+    }
+  }
+  assert(div.innerHTML, '<u>a</u><p><em></em><i>0</i>p<b>1</b>&lt;2&gt;</p><s>z</s>', 'an invalid position inserts nothing');
+
+  const orphan = document.createElement('div');
+  try {
+    orphan.insertAdjacentHTML('nowhere', '<q></q>');
+    assert(true, false, 'an invalid position throws before the parent is checked');
+  }
+  catch ({name}) {
+    assert(name, 'SyntaxError');
+  }
+  assert(orphan.insertAdjacentElement('beforebegin', em), null, 'no parent, no insertion');
+  assert(em.parentNode, p);
+
+  const fragment = document.createDocumentFragment();
+  const child = fragment.appendChild(document.createElement('span'));
+  child.insertAdjacentElement('beforebegin', document.createElement('a'));
+  child.insertAdjacentHTML('afterend', '<i>i</i>');
+  assert(String(fragment), '<#document-fragment><a></a><span></span><i>i</i></#document-fragment>', 'a fragment parent takes adjacent nodes');
+}
