@@ -5,30 +5,39 @@ import {
   BLOCK_ELEMENTS,
   CDATA_SECTION_NODE,
   COMMENT_NODE,
+  DOCUMENT_NODE,
   ELEMENT_NODE,
+  HTML_NAMESPACE,
   NODE_END,
-  TEXT_NODE,
-  SVG_NAMESPACE
+  TEXT_NODE
 } from '../shared/constants.js';
 
 import {
-  setAttribute, removeAttribute,
+  setAttribute, replaceAttribute, removeAttribute,
   numericAttribute, stringAttribute
 } from '../shared/attributes.js';
 
 import {
   CLASS_LIST, DATASET, STYLE,
-  END, NEXT, PREV, START,
-  MIME
+  END, NEXT, PREV,
+  MIME, NAMESPACE, PREFIX
 } from '../shared/symbols.js';
 
 import {
-  htmlToFragment,
   ignoreCase,
   knownAdjacent,
-  localCase,
   String
 } from '../shared/utils.js';
+
+import {
+  asciiLowercase,
+  asciiUppercase,
+  validAttributeName,
+  validateAndExtract
+} from '../shared/names.js';
+
+import {outerHTML} from '../shared/serialize-html.js';
+import {serializeXML} from '../shared/serialize-xml.js';
 
 import {elementAsJSON} from '../shared/jsdon.js';
 import {matches, prepareMatch} from '../shared/matches.js';
@@ -38,20 +47,19 @@ import {isConnected, parentElement, previousSibling, nextSibling} from '../share
 import {previousElementSibling, nextElementSibling} from '../mixin/non-document-type-child-node.js';
 
 import {before, after, replaceWith, remove} from '../mixin/child-node.js';
-import {getInnerHtml, setInnerHtml} from '../mixin/inner-html.js';
+import {adjacentContext, getInnerHtml, parseFragment, setInnerHtml} from '../mixin/inner-html.js';
 import {ParentNode} from '../mixin/parent-node.js';
 
 import {DOMStringMap} from '../dom/string-map.js';
 import {DOMTokenList} from '../dom/token-list.js';
 
-import {CSSStyleDeclaration} from './css-style-declaration.js';
+import {styleOf} from './css-style-declaration.js';
 import {Event} from './event.js';
 import {NamedNodeMap} from './named-node-map.js';
 import {ShadowRoot} from './shadow-root.js';
 import {NodeList} from './node-list.js';
 import {Attr} from './attr.js';
 import {Text} from './text.js';
-import {escape} from '../shared/text-escaper.js';
 
 // <utils>
 const attributesHandler = {
@@ -61,16 +69,44 @@ const attributesHandler = {
 };
 
 const create = (ownerDocument, element, localName)  => {
-  if ('ownerSVGElement' in element) {
-    const svg = ownerDocument.createElementNS(SVG_NAMESPACE, localName);
-    svg.ownerSVGElement = element.ownerSVGElement;
-    return svg;
-  }
-  return ownerDocument.createElement(localName);
+  const clone = element.namespaceURI === HTML_NAMESPACE && ignoreCase(element) && localName === asciiLowercase(localName) ?
+    ownerDocument.createElement(localName) :
+    new element.constructor(ownerDocument, localName);
+  if (NAMESPACE in element)
+    clone[NAMESPACE] = element[NAMESPACE];
+  if (PREFIX in element)
+    clone[PREFIX] = element[PREFIX];
+  if ('ownerSVGElement' in element)
+    clone.ownerSVGElement = element.ownerSVGElement;
+  return clone;
 };
 
-const isVoid = ({localName, ownerDocument}) => {
-  return ownerDocument[MIME].voidElements.test(localName);
+// https://dom.spec.whatwg.org/#concept-element-attributes-get-by-name
+const qualify = (element, name) => (
+  element.namespaceURI === HTML_NAMESPACE && ignoreCase(element) ?
+    asciiLowercase(String(name)) : String(name)
+);
+
+const attributeNamed = (element, name) => {
+  let next = element[NEXT];
+  while (next.nodeType === ATTRIBUTE_NODE) {
+    if (next.name === name)
+      return next;
+    next = next[NEXT];
+  }
+  return null;
+};
+
+const attributeNS = (element, namespace, localName) => {
+  namespace = namespace === '' || namespace === undefined ? null : namespace;
+  localName = String(localName);
+  let next = element[NEXT];
+  while (next.nodeType === ATTRIBUTE_NODE) {
+    if (next.localName === localName && next.namespaceURI === namespace)
+      return next;
+    next = next[NEXT];
+  }
+  return null;
 };
 
 // </utils>
@@ -92,8 +128,12 @@ export class Element extends ParentNode {
   get previousSibling() { return previousSibling(this); }
   get nextSibling() { return nextSibling(this); }
   get namespaceURI() {
-    return 'http://www.w3.org/1999/xhtml';
+    const {[NAMESPACE]: namespace} = this;
+    if (namespace !== undefined)
+      return namespace;
+    return this.ownerDocument[MIME].ignoreCase ? HTML_NAMESPACE : null;
   }
+  get prefix() { return this[PREFIX] || null; }
 
   get previousElementSibling() { return previousElementSibling(this); }
   get nextElementSibling() { return nextElementSibling(this); }
@@ -108,15 +148,15 @@ export class Element extends ParentNode {
   get id() { return stringAttribute.get(this, 'id'); }
   set id(value) { stringAttribute.set(this, 'id', value); }
 
-  get className() { return this.classList.value; }
-  set className(value) {
-    const {classList} = this;
-    classList.clear();
-    classList.add(...(String(value).split(/\s+/)));
-  }
+  get className() { return this.getAttribute('class') ?? ''; }
+  set className(value) { this.setAttribute('class', value); }
 
-  get nodeName() { return localCase(this); }
-  get tagName() { return localCase(this); }
+  get nodeName() { return this.tagName; }
+  get tagName() {
+    const {localName, [PREFIX]: prefix} = this;
+    const name = prefix ? `${prefix}:${localName}` : localName;
+    return this.namespaceURI === HTML_NAMESPACE && ignoreCase(this) ? asciiUppercase(name) : name;
+  }
 
   get classList() {
     return this[CLASS_LIST] || (
@@ -148,7 +188,7 @@ export class Element extends ParentNode {
 
   get style() {
     return this[STYLE] || (
-      this[STYLE] = new CSSStyleDeclaration(this)
+      this[STYLE] = styleOf(this)
     );
   }
 
@@ -206,11 +246,16 @@ export class Element extends ParentNode {
     setInnerHtml(this, html);
   }
 
-  get outerHTML() { return this.toString(); }
+  get outerHTML() { return ignoreCase(this) ? outerHTML(this) : serializeXML(this, true); }
   set outerHTML(html) {
-    const template = this.ownerDocument.createElement('');
-    template.innerHTML = html;
-    this.replaceWith(...template.childNodes);
+    const {parentNode} = this;
+    if (!parentNode)
+      return;
+    if (parentNode.nodeType === DOCUMENT_NODE)
+      throw new DOMException('A document can\'t take markup in place of its element.', 'NoModificationAllowedError');
+    const context = parentNode.nodeType === ELEMENT_NODE ?
+      parentNode : this.ownerDocument.createElement('body');
+    parentNode.replaceChild(parseFragment(context, html), this);
   }
   // </contentRelated>
 
@@ -228,20 +273,21 @@ export class Element extends ParentNode {
   focus() { this.dispatchEvent(new Event('focus')); }
 
   getAttribute(name) {
-    if (name === 'class')
-      return this.className;
     const attribute = this.getAttributeNode(name);
-    return attribute && (ignoreCase(this) ? attribute.value : escape(attribute.value));
+    return attribute && attribute.value;
   }
 
   getAttributeNode(name) {
-    let next = this[NEXT];
-    while (next.nodeType === ATTRIBUTE_NODE) {
-      if (next.name === name)
-        return next;
-      next = next[NEXT];
-    }
-    return null;
+    return attributeNamed(this, qualify(this, name));
+  }
+
+  getAttributeNS(namespace, localName) {
+    const attribute = attributeNS(this, namespace, localName);
+    return attribute && attribute.value;
+  }
+
+  getAttributeNodeNS(namespace, localName) {
+    return attributeNS(this, namespace, localName);
   }
 
   getAttributeNames() {
@@ -255,19 +301,19 @@ export class Element extends ParentNode {
   }
 
   hasAttribute(name) { return !!this.getAttributeNode(name); }
+  hasAttributeNS(namespace, localName) { return !!attributeNS(this, namespace, localName); }
   hasAttributes() { return this[NEXT].nodeType === ATTRIBUTE_NODE; }
 
   removeAttribute(name) {
-    if (name === 'class' && this[CLASS_LIST])
-        this[CLASS_LIST].clear();
-    let next = this[NEXT];
-    while (next.nodeType === ATTRIBUTE_NODE) {
-      if (next.name === name) {
-        removeAttribute(this, next);
-        return;
-      }
-      next = next[NEXT];
-    }
+    const attribute = this.getAttributeNode(name);
+    if (attribute)
+      removeAttribute(this, attribute);
+  }
+
+  removeAttributeNS(namespace, localName) {
+    const attribute = attributeNS(this, namespace, localName);
+    if (attribute)
+      removeAttribute(this, attribute);
   }
 
   removeAttributeNode(attribute) {
@@ -282,44 +328,55 @@ export class Element extends ParentNode {
   }
 
   setAttribute(name, value) {
-    if (name === 'class')
-      this.className = value;
-    else {
-      const attribute = this.getAttributeNode(name);
-      if (attribute)
-        attribute.value = value;
-      else
-        setAttribute(this, new Attr(this.ownerDocument, name, value));
-    }
+    name = qualify(this, validAttributeName(String(name)));
+    const attribute = attributeNamed(this, name);
+    if (attribute)
+      attribute.value = value;
+    else
+      setAttribute(this, new Attr(this.ownerDocument, name, value));
+  }
+
+  setAttributeNS(namespace, qualifiedName, value) {
+    qualifiedName = String(qualifiedName);
+    const {namespace: ns, prefix, localName} = validateAndExtract(namespace, qualifiedName, false);
+    const attribute = attributeNS(this, ns, localName);
+    if (attribute)
+      attribute.value = value;
+    else
+      setAttribute(this, new Attr(this.ownerDocument, qualifiedName, value, ns, prefix, localName));
   }
 
   setAttributeNode(attribute) {
-    const {name} = attribute;
-    const previously = this.getAttributeNode(name);
-    if (previously !== attribute) {
-      if (previously)
-        this.removeAttributeNode(previously);
-      const {ownerElement} = attribute;
-      if (ownerElement)
-        ownerElement.removeAttributeNode(attribute);
+    const {ownerElement, namespaceURI, localName} = attribute;
+    if (ownerElement && ownerElement !== this)
+      throw new DOMException('The attribute belongs to another element.', 'InUseAttributeError');
+    const previously = attributeNS(this, namespaceURI, localName);
+    if (previously === attribute)
+      return attribute;
+    if (previously)
+      replaceAttribute(this, previously, attribute);
+    else
       setAttribute(this, attribute);
-    }
     return previously;
   }
 
+  setAttributeNodeNS(attribute) { return this.setAttributeNode(attribute); }
+
   toggleAttribute(name, force) {
-    if (this.hasAttribute(name)) {
-      if (!force) {
-        this.removeAttribute(name);
-        return false;
+    name = qualify(this, validAttributeName(String(name)));
+    const attribute = attributeNamed(this, name);
+    if (!attribute) {
+      if (force === undefined || force) {
+        setAttribute(this, new Attr(this.ownerDocument, name, ''));
+        return true;
       }
-      return true;
+      return false;
     }
-    else if (force || arguments.length === 1) {
-      this.setAttribute(name, '');
-      return true;
+    if (force === undefined || !force) {
+      removeAttribute(this, attribute);
+      return false;
     }
-    return false;
+    return true;
   }
   // </attributes>
 
@@ -385,7 +442,17 @@ export class Element extends ParentNode {
   }
 
   insertAdjacentHTML(position, html) {
-    this.insertAdjacentElement(position, htmlToFragment(this.ownerDocument, html));
+    let context = this;
+    switch (asciiLowercase(String(position))) {
+      case 'beforebegin':
+      case 'afterend': {
+        context = this.parentNode;
+        if (!context || context.nodeType === DOCUMENT_NODE)
+          throw new DOMException('The element has no parent to take the markup.', 'NoModificationAllowedError');
+        break;
+      }
+    }
+    this.insertAdjacentElement(position, parseFragment(adjacentContext(context), html));
   }
 
   insertAdjacentText(position, text) {
@@ -437,62 +504,7 @@ export class Element extends ParentNode {
 
   // <custom>
   toString() {
-    const out = [];
-    const {[END]: end} = this;
-    let next = {[NEXT]: this};
-    let isOpened = false;
-    do {
-      next = next[NEXT];
-      switch (next.nodeType) {
-        case ATTRIBUTE_NODE: {
-          const attr = ' ' + next;
-          switch (attr) {
-            case ' id':
-            case ' class':
-            case ' style':
-              break;
-            default:
-              out.push(attr);
-          }
-          break;
-        }
-        case NODE_END: {
-          const start = next[START];
-          if (isOpened) {
-            if ('ownerSVGElement' in start)
-              out.push(' />');
-            else if (isVoid(start))
-              out.push(ignoreCase(start) ? '>' : ' />');
-            else
-              out.push(`></${start.localName}>`);
-            isOpened = false;
-          }
-          else
-            out.push(`</${start.localName}>`);
-          break;
-        }
-        case ELEMENT_NODE:
-          if (isOpened)
-            out.push('>');
-          if (next.toString !== this.toString) {
-            out.push(next.toString());
-            next = next[END];
-            isOpened = false;
-          }
-          else {
-            out.push(`<${next.localName}`);
-            isOpened = true;
-          }
-          break;
-        case TEXT_NODE:
-        case COMMENT_NODE:
-        case CDATA_SECTION_NODE:
-          out.push((isOpened ? '>' : '') + next);
-          isOpened = false;
-          break;
-      }
-    } while (next !== end);
-    return out.join('');
+    return ignoreCase(this) ? outerHTML(this) : serializeXML(this, false);
   }
 
   toJSON() {
@@ -504,11 +516,6 @@ export class Element extends ParentNode {
 
 
   /* c8 ignore start */
-  getAttributeNS(_, name) { return this.getAttribute(name); }
   getElementsByTagNameNS(_, name) { return this.getElementsByTagName(name); }
-  hasAttributeNS(_, name) { return this.hasAttribute(name); }
-  removeAttributeNS(_, name) { this.removeAttribute(name); }
-  setAttributeNS(_, name, value) { this.setAttribute(name, value); }
-  setAttributeNodeNS(attr) { return this.setAttributeNode(attr); }
   /* c8 ignore stop */
 }

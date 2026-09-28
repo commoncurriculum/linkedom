@@ -66,6 +66,55 @@ import {HTMLDetailsElement} from '../html/details-element.js';
 import {HTMLSourceElement} from '../html/source-element.js';
 import {HTMLTrackElement} from '../html/track-element.js';
 import {HTMLMarqueeElement} from '../html/marquee-element.js';
+import {registerHTMLClass} from './register-html-class.js';
+
+// https://html.spec.whatwg.org/multipage/indices.html#element-interfaces
+registerHTMLClass('area', HTMLAreaElement);
+registerHTMLClass('audio', HTMLAudioElement);
+registerHTMLClass('base', HTMLBaseElement);
+registerHTMLClass('body', HTMLBodyElement);
+registerHTMLClass('br', HTMLBRElement);
+registerHTMLClass('caption', HTMLTableCaptionElement);
+registerHTMLClass('data', HTMLDataElement);
+registerHTMLClass('datalist', HTMLDataListElement);
+registerHTMLClass(['del', 'ins'], HTMLModElement);
+registerHTMLClass('details', HTMLDetailsElement);
+registerHTMLClass('dir', HTMLDirectoryElement);
+registerHTMLClass('div', HTMLDivElement);
+registerHTMLClass('dl', HTMLDListElement);
+registerHTMLClass('embed', HTMLEmbedElement);
+registerHTMLClass('fieldset', HTMLFieldSetElement);
+registerHTMLClass('font', HTMLFontElement);
+registerHTMLClass('form', HTMLFormElement);
+registerHTMLClass('frame', HTMLFrameElement);
+registerHTMLClass('frameset', HTMLFrameSetElement);
+registerHTMLClass('head', HTMLHeadElement);
+registerHTMLClass('hr', HTMLHRElement);
+registerHTMLClass('html', HTMLHtmlElement);
+registerHTMLClass('label', HTMLLabelElement);
+registerHTMLClass('legend', HTMLLegendElement);
+registerHTMLClass('li', HTMLLIElement);
+registerHTMLClass('map', HTMLMapElement);
+registerHTMLClass('marquee', HTMLMarqueeElement);
+registerHTMLClass('menu', HTMLMenuElement);
+registerHTMLClass('meter', HTMLMeterElement);
+registerHTMLClass('object', HTMLObjectElement);
+registerHTMLClass('ol', HTMLOListElement);
+registerHTMLClass('optgroup', HTMLOptGroupElement);
+registerHTMLClass('output', HTMLOutputElement);
+registerHTMLClass('p', HTMLParagraphElement);
+registerHTMLClass('param', HTMLParamElement);
+registerHTMLClass('picture', HTMLPictureElement);
+registerHTMLClass(['pre', 'listing', 'xmp'], HTMLPreElement);
+registerHTMLClass('progress', HTMLProgressElement);
+registerHTMLClass(['blockquote', 'q'], HTMLQuoteElement);
+registerHTMLClass('span', HTMLSpanElement);
+registerHTMLClass('table', HTMLTableElement);
+registerHTMLClass(['td', 'th'], HTMLTableCellElement);
+registerHTMLClass('tr', HTMLTableRowElement);
+registerHTMLClass('track', HTMLTrackElement);
+registerHTMLClass('ul', HTMLUListElement);
+registerHTMLClass('video', HTMLVideoElement);
 
 export {
   HTMLElement,

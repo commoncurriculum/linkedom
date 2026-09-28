@@ -1,36 +1,46 @@
-import {ELEMENT_NODE, DOCUMENT_FRAGMENT_NODE} from '../shared/constants.js';
-import {CUSTOM_ELEMENTS} from '../shared/symbols.js';
-import {parseFromString} from '../shared/parse-from-string.js';
+import {ELEMENT_NODE, HTML_NAMESPACE} from '../shared/constants.js';
+import {parseHTMLFragment} from '../shared/parse-html.js';
+import {parseXML} from '../shared/parse-xml.js';
+import {innerHTML, isTemplate} from '../shared/serialize-html.js';
+import {serializeXML} from '../shared/serialize-xml.js';
 import {ignoreCase} from '../shared/utils.js';
 
+/**
+ * The context insertAdjacentHTML and the outerHTML setter parse in: a body
+ * element in place of a non-element or an html element.
+ * @param {Node} node
+ * @returns {Element}
+ */
+export const adjacentContext = node => (
+  node.nodeType === ELEMENT_NODE &&
+  !(ignoreCase(node) && node.localName === 'html' && node.namespaceURI === HTML_NAMESPACE)
+) ? node : node.ownerDocument.createElement('body');
+
+/**
+ * @param {Element} context the element the markup is parsed for
+ * @param {String} html
+ * @returns {DocumentFragment}
+ */
+export const parseFragment = (context, html) => {
+  html = html === null ? '' : String(html);
+  if (ignoreCase(context))
+    return parseHTMLFragment(context, html);
+  return parseXML(context.ownerDocument.createDocumentFragment(), html, context);
+};
 
 /**
  * @param {Node} node
  * @returns {String}
  */
-export const getInnerHtml = node => node.childNodes.join('');
+export const getInnerHtml = node => ignoreCase(node) ?
+  innerHTML(node) :
+  node.childNodes.map(child => serializeXML(child, true)).join('');
 
 /**
- * @param {Node} node
+ * @param {Element|ShadowRoot} node
  * @param {String} html
  */
 export const setInnerHtml = (node, html) => {
-  const {ownerDocument} = node;
-  const {constructor} = ownerDocument;
-  const document = new constructor;
-  document[CUSTOM_ELEMENTS] = ownerDocument[CUSTOM_ELEMENTS];
-  const {childNodes} = parseFromString(document, ignoreCase(node), html);
-
-  node.replaceChildren(...childNodes.map(setOwnerDocument, ownerDocument));
+  const fragment = parseFragment(node.nodeType === ELEMENT_NODE ? node : node.host, html);
+  (node.nodeType === ELEMENT_NODE && isTemplate(node) ? node.content : node).replaceChildren(fragment);
 };
-
-function setOwnerDocument(node) {
-  node.ownerDocument = this;
-  switch (node.nodeType) {
-    case ELEMENT_NODE:
-    case DOCUMENT_FRAGMENT_NODE:
-      node.childNodes.forEach(setOwnerDocument, this);
-      break;
-  }
-  return node;
-}

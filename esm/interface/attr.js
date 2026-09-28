@@ -2,7 +2,7 @@ import {ATTRIBUTE_NODE} from '../shared/constants.js';
 import {CHANGED, VALUE} from '../shared/symbols.js';
 import {String, ignoreCase} from '../shared/utils.js';
 import {attrAsJSON} from '../shared/jsdon.js';
-import {emptyAttributes} from '../shared/attributes.js';
+import {attributeChanged, emptyAttributes} from '../shared/attributes.js';
 
 import {attributeChangedCallback as moAttributes} from './mutation-observer.js';
 import {attributeChangedCallback as ceAttributes} from './custom-element-registry.js';
@@ -12,32 +12,43 @@ import {escape} from '../shared/text-escaper.js';
 
 const QUOTE = /"/g;
 
+// A node's own toString serializes it, but WebIDL converts it to a DOMString
+// through Object.prototype.toString, as browsers do.
+export const toDOMString = value => typeof value === 'string' ? value : (
+  value instanceof Node ? `[object ${value.constructor.name}]` : String(value)
+);
+
 /**
  * @implements globalThis.Attr
  */
 export class Attr extends Node {
-  constructor(ownerDocument, name, value = '') {
-    super(ownerDocument, name, ATTRIBUTE_NODE);
+  constructor(ownerDocument, name, value = '', namespaceURI = null, prefix = null, localName = name) {
+    super(ownerDocument, localName, ATTRIBUTE_NODE);
     this.ownerElement = null;
     this.name = String(name);
-    this[VALUE] = String(value);
+    this.namespaceURI = namespaceURI;
+    this.prefix = prefix;
+    this[VALUE] = toDOMString(value);
     this[CHANGED] = false;
   }
+
+  get nodeName() { return this.name; }
 
   get value() { return this[VALUE]; }
   set value(newValue) {
     const {[VALUE]: oldValue, name, ownerElement} = this;
-    this[VALUE] = String(newValue);
+    this[VALUE] = toDOMString(newValue);
     this[CHANGED] = true;
     if (ownerElement) {
+      attributeChanged(ownerElement, this, this[VALUE]);
       moAttributes(ownerElement, name, oldValue);
       ceAttributes(ownerElement, name, oldValue, this[VALUE]);
     }
   }
 
   cloneNode() {
-    const {ownerDocument, name, [VALUE]: value} = this;
-    return new Attr(ownerDocument, name, value);
+    const {ownerDocument, name, [VALUE]: value, namespaceURI, prefix, localName} = this;
+    return new Attr(ownerDocument, name, value, namespaceURI, prefix, localName);
   }
 
   toString() {

@@ -1,3 +1,4 @@
+import {HTML_NAMESPACE} from '../shared/constants.js';
 import {END, UPGRADE} from '../shared/symbols.js';
 import {booleanAttribute, stringAttribute} from '../shared/attributes.js';
 
@@ -58,6 +59,8 @@ export class HTMLElement extends Element {
         this.setAttribute('is', options.is);
     }
   }
+
+  get namespaceURI() { return HTML_NAMESPACE; }
 
   /* c8 ignore start */
 

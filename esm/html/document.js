@@ -1,14 +1,41 @@
-import {ELEMENT_NODE} from '../shared/constants.js';
-import {CUSTOM_ELEMENTS, END, NEXT} from '../shared/symbols.js';
+import {ELEMENT_NODE, HTML_NAMESPACE} from '../shared/constants.js';
+import {CREATE_ELEMENT, CUSTOM_ELEMENTS, END, NEXT} from '../shared/symbols.js';
 import {htmlClasses} from '../shared/register-html-class.js';
+import {asciiLowercase, validElementName} from '../shared/names.js';
+import {innerHTML} from '../shared/serialize-html.js';
 
 import {Document} from '../interface/document.js';
 import {NodeList} from '../interface/node-list.js';
 import {customElements} from '../interface/custom-element-registry.js';
 
 import {HTMLElement} from './element.js';
+import {HTMLUnknownElement} from './unknown-element.js';
 
-const createHTMLElement = (ownerDocument, builtin, localName, options) => {
+// https://html.spec.whatwg.org/multipage/indices.html#element-interfaces
+const htmlElements = new Set([
+  'abbr', 'acronym', 'address', 'article', 'aside', 'b', 'basefont', 'bdi',
+  'bdo', 'big', 'center', 'cite', 'code', 'dd', 'dfn', 'dt', 'em', 'figcaption',
+  'figure', 'footer', 'header', 'hgroup', 'i', 'kbd', 'main', 'mark', 'nav',
+  'nobr', 'noembed', 'noframes', 'noscript', 'plaintext', 'rb', 'rp', 'rt',
+  'rtc', 'ruby', 's', 'samp', 'search', 'section', 'small', 'strike', 'strong',
+  'sub', 'summary', 'sup', 'tt', 'u', 'var', 'wbr',
+  // interfaces linkedom doesn't implement
+  'col', 'colgroup', 'dialog', 'tbody', 'tfoot', 'thead'
+]);
+
+const asciiWhitespace = /[\t\n\f\r ]+/g;
+
+const htmlChild = ({documentElement}, matches) => {
+  if (documentElement && documentElement.localName === 'html') {
+    for (const child of documentElement.children) {
+      if (matches(child.localName) && child.namespaceURI === HTML_NAMESPACE)
+        return child;
+    }
+  }
+  return null;
+};
+
+export const createHTMLElement = (ownerDocument, builtin, localName, options) => {
   if (!builtin && htmlClasses.has(localName)) {
     const Class = htmlClasses.get(localName);
     return new Class(ownerDocument, localName);
@@ -23,7 +50,10 @@ const createHTMLElement = (ownerDocument, builtin, localName, options) => {
       return element;
     }
   }
-  return new HTMLElement(ownerDocument, localName);
+  const Class = htmlClasses.get(localName) || (
+    localName.includes('-') || htmlElements.has(localName) ? HTMLElement : HTMLUnknownElement
+  );
+  return new Class(ownerDocument, localName);
 };
 
 /**
@@ -31,6 +61,14 @@ const createHTMLElement = (ownerDocument, builtin, localName, options) => {
  */
 export class HTMLDocument extends Document {
   constructor() { super('text/html'); }
+
+  toString() { return innerHTML(this); }
+
+  [CREATE_ELEMENT](namespace, localName, prefix = null) {
+    return namespace === HTML_NAMESPACE && !prefix ?
+      createHTMLElement(this, false, localName) :
+      super[CREATE_ELEMENT](namespace, localName, prefix);
+  }
 
   get all() {
     const nodeList = new NodeList;
@@ -47,53 +85,40 @@ export class HTMLDocument extends Document {
   }
 
   /**
-   * @type HTMLHeadElement
+   * @type HTMLHeadElement?
    */
   get head() {
-    const {documentElement} = this;
-    let {firstElementChild} = documentElement;
-    if (!firstElementChild || firstElementChild.tagName !== 'HEAD') {
-      firstElementChild = this.createElement('head');
-      documentElement.prepend(firstElementChild);
-    }
-    return firstElementChild;
+    return htmlChild(this, name => name === 'head');
   }
 
   /**
-   * @type HTMLBodyElement
+   * @type HTMLBodyElement?
    */
   get body() {
-    const {head} = this;
-    let {nextElementSibling} = head;
-    if (!nextElementSibling || nextElementSibling.tagName !== 'BODY') {
-      nextElementSibling = this.createElement('body');
-      head.after(nextElementSibling);
-    }
-    return nextElementSibling;
+    return htmlChild(this, name => name === 'body' || name === 'frameset');
   }
 
   /**
-   * @type HTMLTitleElement
+   * @type string
    */
   get title() {
-    const {head} = this;
-    return head.getElementsByTagName('title').at(0)?.textContent || '';
+    const title = this.getElementsByTagName('title').at(0);
+    return title ? title.textContent.replace(asciiWhitespace, ' ').trim() : '';
   }
 
   set title(textContent) {
     const {head} = this;
-    let title = head.getElementsByTagName('title').at(0);
-    if (title)
-      title.textContent = textContent;
-    else {
-      head.insertBefore(
-        this.createElement('title'),
-        head.firstChild
-      ).textContent = textContent;
+    let title = this.getElementsByTagName('title').at(0);
+    if (!title) {
+      if (!head)
+        return;
+      title = head.appendChild(this.createElement('title'));
     }
+    title.textContent = textContent;
   }
 
   createElement(localName, options) {
+    localName = asciiLowercase(validElementName(String(localName)));
     const builtin = !!(options && options.is);
     const element = createHTMLElement(this, builtin, localName, options);
     if (builtin)
