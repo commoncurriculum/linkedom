@@ -167,3 +167,28 @@ assert(xmlDocWithEmptyAttrFromSet.innerHTML, '<android.view.View style=""/>');
   child.insertAdjacentHTML('afterend', '<i>i</i>');
   assert(String(fragment), '<#document-fragment><a></a><span></span><i>i</i></#document-fragment>', 'a fragment parent takes adjacent nodes');
 }
+
+{
+  const {document} = parseHTML('<!doctype html><html><body><p>p</p></body></html>');
+  const orphan = document.createElement('div');
+  assert(orphan.insertAdjacentElement('afterend', document.createElement('i')), null, 'afterend without a parent');
+  orphan.outerHTML = '<b>ignored</b>';
+  assert(orphan.outerHTML, '<div></div>', 'outerHTML without a parent does nothing');
+  try {
+    document.documentElement.outerHTML = '<html></html>';
+    assert(true, false, 'a document child cannot be replaced by markup');
+  }
+  catch ({name}) {
+    assert(name, 'NoModificationAllowedError');
+  }
+  const fragment = document.createDocumentFragment();
+  const child = fragment.appendChild(document.createElement('span'));
+  child.outerHTML = '<td>cell</td><b>b</b>';
+  assert(String(fragment), '<#document-fragment>cell<b>b</b></#document-fragment>', 'a fragment parent parses in a body');
+  document.body.firstChild.outerHTML = '<td>cell</td>';
+  assert(document.body.innerHTML, 'cell', 'an element parent is the context');
+  document.body.insertAdjacentHTML('beforebegin', '<td>c</td><p>x</p>');
+  assert(document.documentElement.innerHTML, '<head></head>c<p>x</p><body>cell</body>', 'an html parent parses in a body');
+  document.body.innerHTML = null;
+  assert(document.body.innerHTML, '', 'innerHTML null');
+}

@@ -109,3 +109,12 @@ assert(Array.from(divWithStyle.style).join(','), 'display,color', 'Array.from af
   assert(p.getAttribute('style'), 'color: green');
   assert(p.style.cssText, 'color: green;', 'an attribute write inside attributeChangedCallback reaches its style');
 }
+
+{
+  const {document} = parseHTML('<!doctype html><html><body></body></html>');
+  const p = document.createElement('p');
+  p.style.setProperty('color', 'red', 'important');
+  assert(p.style.getPropertyPriority('color'), 'important');
+  assert(p.getAttribute('style'), 'color: red !important;');
+  assert(p.style.getPropertyPriority('margin'), '');
+}

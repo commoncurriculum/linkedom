@@ -46,3 +46,19 @@ assert(p.getAttributeNode('title').value, special, 'escaping leaves the value al
   document.documentElement.innerHTML = '<body>&amp;amp;</body>';
   assert(document.documentElement.toString(), `<html id="html" class="live"><head></head><body>&amp;amp;</body></html>`);
 }
+
+{
+  const {document} = parseHTML('<!doctype html><html><body></body></html>');
+  const foreign = document.createElementNS('urn:x', 'x:item');
+  foreign.setAttributeNS('urn:y', 'y:a', '1');
+  foreign.setAttributeNS('http://www.w3.org/XML/1998/namespace', 'q:lang', 'en');
+  foreign.setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns:x', 'urn:x');
+  foreign.setAttributeNS('http://www.w3.org/2000/xmlns/', 'xmlns', 'urn:d');
+  document.body.append(foreign);
+  assert(document.body.innerHTML, '<x:item y:a="1" xml:lang="en" xmlns:x="urn:x" xmlns="urn:d"></x:item>', 'foreign elements and attributes use qualified names, the rest the standard\'s prefixes');
+}
+
+{
+  const {document} = parseHTML('<!doctype html><html a="1"><body b="1"><html a="2" c="3"><body b="2" d="4"></body></html></body></html>');
+  assert(document.documentElement.outerHTML, '<html a="1" c="3"><head></head><body b="1" d="4"></body></html>', 'repeated html and body tags add only the attributes that are missing');
+}

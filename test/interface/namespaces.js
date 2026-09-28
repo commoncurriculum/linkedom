@@ -147,3 +147,5 @@ throws(() => document.createElement('i').setAttributeNode(replacement), 'InUseAt
   created.append(document.createElementNS(MATHML, 'mn'));
   assert(created.outerHTML, '<mfrac><mn></mn></mfrac>');
 }
+
+assert(document.createTextNode('t').lookupNamespaceURI(null), null, 'a detached text node has none');

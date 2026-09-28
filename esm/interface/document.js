@@ -188,6 +188,11 @@ export class Document extends NonElementParentNode {
   createDocumentFragment() { return new DocumentFragment(this); }
   createDocumentType(name, publicId, systemId) { return new DocumentType(this, name, publicId, systemId); }
 
+  /**
+   * @param {string} localName
+   * @param {ElementCreationOptions} [options]
+   * @returns {any}
+   */
   createElement(localName, options) {
     localName = validElementName(String(localName));
     const isHTML = this[MIME].ignoreCase;
