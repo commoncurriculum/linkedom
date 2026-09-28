@@ -1,7 +1,7 @@
 import {ATTRIBUTE_NODE} from './constants.js';
 import {ATTRIBUTE_CHANGED, NEXT, PREV, VALUE} from './symbols.js';
 
-import {knownAdjacent, knownSiblings} from './utils.js';
+import {knownAdjacent, knownSiblings, linkAttribute} from './utils.js';
 
 import {attributeChangedCallback as ceAttributes} from '../interface/custom-element-registry.js';
 import {attributeChangedCallback as moAttributes} from '../interface/mutation-observer.js';
@@ -23,8 +23,7 @@ export const setAttribute = (element, attribute) => {
   let last = element;
   while (last[NEXT].nodeType === ATTRIBUTE_NODE)
     last = last[NEXT];
-  attribute.ownerElement = element;
-  knownSiblings(last, attribute, last[NEXT]);
+  linkAttribute(element, attribute, last);
   attributeChanged(element, attribute, null, attribute[VALUE]);
 };
 

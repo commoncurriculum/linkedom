@@ -12,9 +12,9 @@ import {
   SVG_NAMESPACE
 } from './constants.js';
 
-import {CREATE_ELEMENT, END, PREV} from './symbols.js';
+import {CREATE_ELEMENT} from './symbols.js';
 
-import {knownBoundaries, knownSiblings} from './utils.js';
+import {linkAttribute, linkNode} from './utils.js';
 
 import {Attr} from '../interface/attr.js';
 import {CDATASection} from '../interface/cdata-section.js';
@@ -25,11 +25,6 @@ import {Text} from '../interface/text.js';
 import {HTMLDocument} from '../html/document.js';
 
 const {parse} = JSON;
-
-const append = (parentNode, node, end) => {
-  node.parentNode = parentNode;
-  knownSiblings(end[PREV], node, end);
-};
 
 /**
  * @typedef {number|string} jsdonValue - either a node type or its content
@@ -45,37 +40,32 @@ export const parseJSON = value => {
   const array = typeof value === 'string' ? parse(value) : value;
   const {length} = array;
   const document = new HTMLDocument;
-  let parentNode = document, end = parentNode[END], svg = false, i = 0;
+  let parentNode = document, i = 0;
   while (i < length) {
     let nodeType = array[i++];
     switch (nodeType) {
       case ELEMENT_NODE: {
         const localName = array[i++];
-        const isSVG = svg || localName === 'svg' || localName === 'SVG';
-        const element = document[CREATE_ELEMENT](isSVG ? SVG_NAMESPACE : HTML_NAMESPACE, localName);
-        knownBoundaries(end[PREV], element, end);
-        element.parentNode = parentNode;
+        const svg = localName === 'svg' || localName === 'SVG' || parentNode.namespaceURI === SVG_NAMESPACE;
+        const element = document[CREATE_ELEMENT](svg ? SVG_NAMESPACE : HTML_NAMESPACE, localName);
+        linkNode(parentNode, element);
         parentNode = element;
-        end = parentNode[END];
-        svg = isSVG;
         break;
       }
       case ATTRIBUTE_NODE: {
         const name = array[i++];
         const value = typeof array[i] === 'string' ? array[i++] : '';
-        const attr = new Attr(document, name, value);
-        attr.ownerElement = parentNode;
-        knownSiblings(end[PREV], attr, end);
+        linkAttribute(parentNode, new Attr(document, name, value));
         break;
       }
       case TEXT_NODE:
-        append(parentNode, new Text(document, array[i++]), end);
+        linkNode(parentNode, new Text(document, array[i++]));
         break;
       case COMMENT_NODE:
-        append(parentNode, new Comment(document, array[i++]), end);
+        linkNode(parentNode, new Comment(document, array[i++]));
         break;
       case CDATA_SECTION_NODE:
-        append(parentNode, new CDATASection(document, array[i++]), end);
+        linkNode(parentNode, new CDATASection(document, array[i++]));
         break;
       case DOCUMENT_TYPE_NODE: {
         const args = [document];
@@ -83,23 +73,19 @@ export const parseJSON = value => {
           args.push(array[i++]);
         if (args.length === 3 && /\.dtd$/i.test(args[2]))
           args.splice(2, 0, '');
-        append(parentNode, new DocumentType(...args), end);
+        linkNode(parentNode, new DocumentType(...args));
         break;
       }
       case DOCUMENT_FRAGMENT_NODE:
         parentNode = document.createDocumentFragment();
-        end = parentNode[END];
       /* eslint no-fallthrough:0 */
       case DOCUMENT_NODE:
         break;
       default:
         do {
           nodeType -= NODE_END;
-          if (svg && !parentNode.ownerSVGElement)
-            svg = false;
           parentNode = parentNode.parentNode || parentNode;
         } while (nodeType < 0);
-        end = parentNode[END];
         break;
     }
   }

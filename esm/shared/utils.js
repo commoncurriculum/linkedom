@@ -28,6 +28,28 @@ export const knownSiblings = (prev, current, next) => {
   knownAdjacent(current, next);
 };
 
+/**
+ * Links a node into the tree without running any insertion steps.
+ * @param {Node} parentNode
+ * @param {Node} node
+ * @param {Node} next the node, or the end, it goes before
+ */
+export const linkNode = (parentNode, node, next = parentNode[END]) => {
+  node.parentNode = parentNode;
+  knownBoundaries(next[PREV], node, next);
+};
+
+/**
+ * Links an attribute to an element without running any attribute change steps.
+ * @param {Element} element
+ * @param {Attr} attribute
+ * @param {Node} last the element or its attribute this one follows
+ */
+export const linkAttribute = (element, attribute, last = element[END][PREV]) => {
+  attribute.ownerElement = element;
+  knownSiblings(last, attribute, last[NEXT]);
+};
+
 export const setAdjacent = (prev, next) => {
   if (prev)
     prev[NEXT] = next;

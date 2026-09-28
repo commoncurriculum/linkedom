@@ -210,3 +210,14 @@ callCount = 0;
 buttonTarget.click();
 assert(callCount, 4, '4 (2 are set before previous tests) and 2 here listeners should be called');
 assert(evBtn, 0, 'default click event button should be 0 (left click)')
+{
+  const target = new EventTarget();
+  target.removeEventListener('foo', basicHandler);
+  assert(target.dispatchEvent(new Event('foo')), true, 'a target without listeners');
+  target.addEventListener('foo', basicHandler);
+  target.removeEventListener('foo', basicHandler);
+  target.removeEventListener('foo', basicHandler);
+  const before = callCount;
+  target.dispatchEvent(new Event('foo'));
+  assert(callCount, before, 'removed listeners are not called');
+}

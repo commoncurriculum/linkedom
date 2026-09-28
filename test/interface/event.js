@@ -53,3 +53,9 @@ assert(composedPathArgs.length, 5, 'should have 5 targets: div, body, html, docu
 assert(composedPathArgs[0], node, 'first is the node');
 assert(composedPathArgs[2], document.firstChild, 'third the html');
 assert(composedPathArgs[3], document, 'fourth the document');
+assert(composedPathArgs[1], document.body, 'second the body');
+assert('nodeType' in composedPathArgs[4], false, 'last the window, which is no node');
+let windowArgs = null;
+document.defaultView.addEventListener('click', function (event) { windowArgs = [this, event.currentTarget]; });
+node.dispatchEvent(bubblingClickEvent);
+assert(windowArgs[1], composedPathArgs[4], 'the window listens on it');
