@@ -4,6 +4,7 @@
 export class HTMLElement extends Element implements globalThis.HTMLElement {
     static get observedAttributes(): any[];
     constructor(ownerDocument?: any, localName?: string);
+    get namespaceURI(): string;
     blur(): void;
     click(): void;
     get accessKeyLabel(): string;

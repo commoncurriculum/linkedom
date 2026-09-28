@@ -1,7 +1,7 @@
 export function ImageClass(ownerDocument: any): {
-    new (width: any, height: any, ...args: any[]): {
-        height: any;
+    new (width: any, height: any): {
         width: any;
+        height: any;
         alt: any;
         sizes: any;
         src: any;
@@ -9,6 +9,7 @@ export function ImageClass(ownerDocument: any): {
         title: any;
         ownerDocument: any;
         localName: any;
+        readonly namespaceURI: string;
         blur(): void;
         click(): void;
         readonly accessKeyLabel: string;
@@ -94,7 +95,7 @@ export function ImageClass(ownerDocument: any): {
         readonly parentElement: any;
         readonly previousSibling: any;
         readonly nextSibling: any;
-        readonly namespaceURI: string;
+        readonly prefix: any;
         readonly previousElementSibling: any;
         readonly nextElementSibling: any;
         before(...nodes: any[]): void;
@@ -129,14 +130,20 @@ export function ImageClass(ownerDocument: any): {
         focus(): void;
         getAttribute(name: any): any;
         getAttributeNode(name: any): any;
+        getAttributeNS(namespace: any, localName: any): any;
+        getAttributeNodeNS(namespace: any, localName: any): any;
         getAttributeNames(): import("./node-list.js").NodeList;
         hasAttribute(name: any): boolean;
+        hasAttributeNS(namespace: any, localName: any): boolean;
         hasAttributes(): boolean;
         removeAttribute(name: any): void;
+        removeAttributeNS(namespace: any, localName: any): void;
         removeAttributeNode(attribute: any): void;
         setAttribute(name: any, value: any): void;
+        setAttributeNS(namespace: any, qualifiedName: any, value: any): void;
         setAttributeNode(attribute: any): any;
-        toggleAttribute(name: any, force: any, ...args: any[]): boolean;
+        setAttributeNodeNS(attribute: any): any;
+        toggleAttribute(name: any, force: any): boolean;
         readonly shadowRoot: any;
         attachShadow(init: any): import("./shadow-root.js").ShadowRoot;
         matches(selectors: any): boolean;
@@ -147,12 +154,7 @@ export function ImageClass(ownerDocument: any): {
         cloneNode(deep?: boolean): any;
         toString(): string;
         toJSON(): any[];
-        getAttributeNS(_: any, name: any): any;
         getElementsByTagNameNS(_: any, name: any): import("./node-list.js").NodeList;
-        hasAttributeNS(_: any, name: any): boolean;
-        removeAttributeNS(_: any, name: any): void;
-        setAttributeNS(_: any, name: any, value: any): void;
-        setAttributeNodeNS(attr: any): any;
         [CLASS_LIST]: any;
         [DATASET]: any;
         [STYLE]: any;
@@ -193,6 +195,8 @@ export function ImageClass(ownerDocument: any): {
         nodeValue: any;
         hasChildNodes(): boolean;
         isSameNode(node: any): boolean;
+        lookupNamespaceURI(prefix: any): any;
+        isDefaultNamespace(namespace: any): boolean;
         compareDocumentPosition(target: any): number;
         isEqualNode(node: any): boolean;
         _getParent(): any;

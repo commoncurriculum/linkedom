@@ -29,8 +29,9 @@ export class Document extends NonElementParentNode implements globalThis.Documen
     importNode(externalNode: any, ...args: any[]): any;
     querySelectorAll(selectors: any): any;
     getElementsByTagNameNS(_: any, name: any): NodeList;
-    createAttributeNS(_: any, name: any): Attr;
-    createElementNS(nsp: any, localName: any, options: any): Element;
+    createAttributeNS(namespace: any, qualifiedName: any): Attr;
+    createElementNS(namespace: any, qualifiedName: any, options: any): any;
+    [CREATE_ELEMENT](namespace: any, localName: any, prefix?: any): any;
     [CUSTOM_ELEMENTS]: {
         active: boolean;
         registry: any;
@@ -60,6 +61,7 @@ import { Range } from './range.js';
 import { Text } from './text.js';
 import { TreeWalker } from './tree-walker.js';
 import { NodeList } from './node-list.js';
+import { CREATE_ELEMENT } from '../shared/symbols.js';
 import { CUSTOM_ELEMENTS } from '../shared/symbols.js';
 import { MUTATION_OBSERVER } from '../shared/symbols.js';
 import { MIME } from '../shared/symbols.js';

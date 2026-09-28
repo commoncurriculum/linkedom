@@ -51,6 +51,22 @@ exports.MIME = MIME;
 const MUTATION_OBSERVER = Symbol('MutationObserver');
 exports.MUTATION_OBSERVER = MUTATION_OBSERVER;
 
+// used in Document to create parsed elements without validating their names
+const CREATE_ELEMENT = Symbol('createElement');
+exports.CREATE_ELEMENT = CREATE_ELEMENT;
+
+// used in Document for the quirks mode its parser chose
+const MODE = Symbol('mode');
+exports.MODE = MODE;
+
+// used in Element for a namespace other than its class's default
+const NAMESPACE = Symbol('namespace');
+exports.NAMESPACE = NAMESPACE;
+
+// used in Element for a namespace prefix
+const PREFIX = Symbol('prefix');
+exports.PREFIX = PREFIX;
+
 // used to define next node reference
 const NEXT = Symbol('next');
 exports.NEXT = NEXT;

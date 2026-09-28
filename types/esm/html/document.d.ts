@@ -1,3 +1,4 @@
+export function createHTMLElement(ownerDocument: any, builtin: any, localName: any, options: any): any;
 /**
  * @implements globalThis.HTMLDocument
  */
@@ -5,18 +6,18 @@ export class HTMLDocument extends Document implements globalThis.HTMLDocument {
     constructor();
     get all(): NodeList;
     /**
-     * @type HTMLHeadElement
+     * @type HTMLHeadElement?
      */
     get head(): HTMLHeadElement;
     /**
-     * @type HTMLBodyElement
+     * @type HTMLBodyElement?
      */
     get body(): HTMLBodyElement;
-    set title(textContent: HTMLTitleElement);
+    set title(textContent: string);
     /**
-     * @type HTMLTitleElement
+     * @type string
      */
-    get title(): HTMLTitleElement;
+    get title(): string;
     createElement(localName: any, options: any): any;
 }
 import { Document } from '../interface/document.js';

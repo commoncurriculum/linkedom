@@ -3,7 +3,8 @@
  */
 export class Element extends ParentNode implements globalThis.Element {
     constructor(ownerDocument: any, localName: any);
-    get namespaceURI(): string;
+    get namespaceURI(): any;
+    get prefix(): any;
     before(...nodes: any[]): void;
     after(...nodes: any[]): void;
     replaceWith(...nodes: any[]): void;
@@ -46,14 +47,20 @@ export class Element extends ParentNode implements globalThis.Element {
     focus(): void;
     getAttribute(name: any): any;
     getAttributeNode(name: any): any;
+    getAttributeNS(namespace: any, localName: any): any;
+    getAttributeNodeNS(namespace: any, localName: any): any;
     getAttributeNames(): NodeList;
     hasAttribute(name: any): boolean;
+    hasAttributeNS(namespace: any, localName: any): boolean;
     hasAttributes(): boolean;
     removeAttribute(name: any): void;
+    removeAttributeNS(namespace: any, localName: any): void;
     removeAttributeNode(attribute: any): void;
     setAttribute(name: any, value: any): void;
+    setAttributeNS(namespace: any, qualifiedName: any, value: any): void;
     setAttributeNode(attribute: any): any;
-    toggleAttribute(name: any, force: any, ...args: any[]): boolean;
+    setAttributeNodeNS(attribute: any): any;
+    toggleAttribute(name: any, force: any): boolean;
     get shadowRoot(): any;
     attachShadow(init: any): ShadowRoot;
     matches(selectors: any): boolean;
@@ -63,12 +70,7 @@ export class Element extends ParentNode implements globalThis.Element {
     insertAdjacentText(position: any, text: any): void;
     cloneNode(deep?: boolean): any;
     toJSON(): any[];
-    getAttributeNS(_: any, name: any): any;
     getElementsByTagNameNS(_: any, name: any): NodeList;
-    hasAttributeNS(_: any, name: any): boolean;
-    removeAttributeNS(_: any, name: any): void;
-    setAttributeNS(_: any, name: any, value: any): void;
-    setAttributeNodeNS(attr: any): any;
     [CLASS_LIST]: any;
     [DATASET]: any;
     [STYLE]: any;

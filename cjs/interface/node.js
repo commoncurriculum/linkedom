@@ -15,7 +15,9 @@ const {
   DOCUMENT_POSITION_FOLLOWING,
   DOCUMENT_POSITION_CONTAINS,
   DOCUMENT_POSITION_CONTAINED_BY,
-  DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC
+  DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC,
+  XML_NAMESPACE,
+  XMLNS_NAMESPACE
 } = require('../shared/constants.js');
 
 const {NEXT, PREV} = require('../shared/symbols.js');
@@ -23,6 +25,44 @@ const {NEXT, PREV} = require('../shared/symbols.js');
 const {EventTarget} = require('./event-target.js');
 
 const {NodeList} = require('./node-list.js');
+
+// https://dom.spec.whatwg.org/#locate-a-namespace
+const locateNamespace = (node, prefix) => {
+  switch (node.nodeType) {
+    case ELEMENT_NODE: {
+      if (prefix === 'xml')
+        return XML_NAMESPACE;
+      if (prefix === 'xmlns')
+        return XMLNS_NAMESPACE;
+      const {namespaceURI} = node;
+      if (namespaceURI !== null && node.prefix === prefix)
+        return namespaceURI;
+      for (const attribute of node.attributes) {
+        if (attribute.namespaceURI === XMLNS_NAMESPACE && (
+          prefix === null ?
+            attribute.prefix === null && attribute.localName === 'xmlns' :
+            attribute.prefix === 'xmlns' && attribute.localName === prefix
+        ))
+          return attribute.value || null;
+      }
+      const {parentElement} = node;
+      return parentElement ? locateNamespace(parentElement, prefix) : null;
+    }
+    case DOCUMENT_NODE: {
+      const {documentElement} = node;
+      return documentElement ? locateNamespace(documentElement, prefix) : null;
+    }
+    case DOCUMENT_TYPE_NODE:
+    case DOCUMENT_FRAGMENT_NODE:
+      return null;
+    case ATTRIBUTE_NODE: {
+      const {ownerElement} = node;
+      return ownerElement ? locateNamespace(ownerElement, prefix) : null;
+    }
+  }
+  const {parentElement} = node;
+  return parentElement ? locateNamespace(parentElement, prefix) : null;
+};
 
 const getParentNodeCount = ({parentNode}) => {
   let count = 0;
@@ -135,6 +175,14 @@ class Node extends EventTarget {
 
   hasChildNodes() { return !!this.lastChild; }
   isSameNode(node) { return this === node; }
+
+  lookupNamespaceURI(prefix) {
+    return locateNamespace(this, prefix === '' || prefix === undefined ? null : prefix);
+  }
+
+  isDefaultNamespace(namespace) {
+    return this.lookupNamespaceURI(null) === (namespace === '' ? null : namespace);
+  }
 
   // TODO: attributes?
   compareDocumentPosition(target) {

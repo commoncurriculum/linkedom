@@ -6,6 +6,8 @@ const {HTMLDocument} = require('../html/document.js');
 const {SVGDocument} = require('../svg/document.js');
 const {XMLDocument} = require('../xml/document.js');
 
+const PARSER_ERROR_NAMESPACE = 'http://www.mozilla.org/newlayout/xml/parsererror.xml';
+
 /**
  * @implements globalThis.DOMParser
  */
@@ -19,23 +21,34 @@ class DOMParser {
    * @returns {MimeToDoc[MIME]}
    */
   parseFromString(markupLanguage, mimeType, globals = null) {
-    let isHTML = false, document;
-    if (mimeType === 'text/html') {
-      isHTML = true;
-      document = new HTMLDocument;
+    const isHTML = mimeType === 'text/html';
+    const create = () => {
+      const document = isHTML ? new HTMLDocument : (
+        mimeType === 'image/svg+xml' ? new SVGDocument : new XMLDocument
+      );
+      document[DOM_PARSER] = DOMParser;
+      if (globals)
+        document[GLOBALS] = globals;
+      return document;
+    };
+    const document = create();
+    if (isHTML) {
+      if (markupLanguage === '...')
+        markupLanguage = '<!doctype html><html><head></head><body></body></html>';
+      return parseFromString(document, true, markupLanguage == null ? '' : String(markupLanguage));
     }
-    else if (mimeType === 'image/svg+xml')
-      document = new SVGDocument;
-    else
-      document = new XMLDocument;
-    document[DOM_PARSER] = DOMParser;
-    if (globals)
-      document[GLOBALS] = globals;
-    if (isHTML && markupLanguage === '...')
-      markupLanguage = '<!doctype html><html><head></head><body></body></html>';
-    return markupLanguage ?
-            parseFromString(document, isHTML, markupLanguage) :
-            document;
+    if (!markupLanguage)
+      return document;
+    try {
+      return parseFromString(document, false, String(markupLanguage));
+    }
+    catch (error) {
+      const failed = create();
+      const parserError = failed.createElementNS(PARSER_ERROR_NAMESPACE, 'parsererror');
+      parserError.textContent = error.message;
+      failed.appendChild(parserError);
+      return failed;
+    }
   }
 }
 exports.DOMParser = DOMParser

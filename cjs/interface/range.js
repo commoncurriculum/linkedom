@@ -1,11 +1,12 @@
 'use strict';
 // https://dom.spec.whatwg.org/#concept-live-range
 
+const {COMMENT_NODE, DOCUMENT_NODE, ELEMENT_NODE, TEXT_NODE} = require('../shared/constants.js');
 const {END, NEXT, PREV, START} = require('../shared/symbols.js');
 
-const {SVGElement} = require('../svg/element.js');
+const {getEnd, setAdjacent} = require('../shared/utils.js');
 
-const {getEnd, htmlToFragment, setAdjacent} = require('../shared/utils.js');
+const {adjacentContext, parseFragment} = require('../mixin/inner-html.js');
 
 const deleteContents = ({[START]: start, [END]: end}, fragment = null) => {
   setAdjacent(start[PREV], end[NEXT]);
@@ -98,25 +99,15 @@ class Range {
     return fragment;
   }
 
+  // https://w3c.github.io/DOM-Parsing/#dom-range-createcontextualfragment
   createContextualFragment(html) {
-    const { commonAncestorContainer: doc } = this;
-    const isSVG = 'ownerSVGElement' in doc;
-    const document = isSVG ? doc.ownerDocument : doc;
-    let content = htmlToFragment(document, html);
-    if (isSVG) {
-      const childNodes = [...content.childNodes];
-      content = document.createDocumentFragment();
-      Object.setPrototypeOf(content, SVGElement.prototype);
-      content.ownerSVGElement = document;
-      for (const child of childNodes) {
-        Object.setPrototypeOf(child, SVGElement.prototype);
-        child.ownerSVGElement = document;
-        content.appendChild(child);
-      }
-    }
-    else
-      this.selectNode(content);
-    return content;
+    let {commonAncestorContainer: node} = this;
+    if (node.nodeType === TEXT_NODE || node.nodeType === COMMENT_NODE)
+      node = node.parentElement || node.ownerDocument;
+    const context = node.nodeType === ELEMENT_NODE ?
+      adjacentContext(node) :
+      (node.nodeType === DOCUMENT_NODE ? node : node.ownerDocument).createElement('body');
+    return parseFragment(context, html);
   }
 
   cloneRange() {

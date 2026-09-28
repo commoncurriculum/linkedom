@@ -29,6 +29,12 @@ const {nextElementSibling} = require('./non-document-type-child-node.js');
 
 const isNode = node => node instanceof Node;
 
+// WebIDL's conversion of a Node argument, with the message browsers give.
+const nodeArgument = (method, node) => {
+  if (!isNode(node))
+    throw new TypeError(`Failed to execute '${method}' on 'Node': parameter 1 is not of type 'Node'.`);
+};
+
 const insert = (parentNode, child, nodes) => {
   const {ownerDocument} = parentNode;
   for (const node of nodes)
@@ -186,7 +192,7 @@ class ParentNode extends Node {
     while (next !== end) {
       if (next.nodeType === ELEMENT_NODE && matches(next))
         return next;
-      next = next.nodeType === ELEMENT_NODE && next.localName === 'template' ? next[END] : next[NEXT];
+      next = next[NEXT];
     }
     return null;
   }
@@ -198,12 +204,13 @@ class ParentNode extends Node {
     while (next !== end) {
       if (next.nodeType === ELEMENT_NODE && matches(next))
         elements.push(next);
-      next = next.nodeType === ELEMENT_NODE && next.localName === 'template' ? next[END] : next[NEXT];
+      next = next[NEXT];
     }
     return elements;
   }
 
   appendChild(node) {
+    nodeArgument('appendChild', node);
     return this.insertBefore(node, this[END]);
   }
 
@@ -215,6 +222,7 @@ class ParentNode extends Node {
   }
 
   insertBefore(node, before = null) {
+    nodeArgument('insertBefore', node);
     if (node === before)
       return node;
     if (node === this)

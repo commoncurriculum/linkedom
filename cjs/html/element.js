@@ -1,4 +1,5 @@
 'use strict';
+const {HTML_NAMESPACE} = require('../shared/constants.js');
 const {END, UPGRADE} = require('../shared/symbols.js');
 const {booleanAttribute, stringAttribute} = require('../shared/attributes.js');
 
@@ -59,6 +60,8 @@ class HTMLElement extends Element {
         this.setAttribute('is', options.is);
     }
   }
+
+  get namespaceURI() { return HTML_NAMESPACE; }
 
   /* c8 ignore start */
 

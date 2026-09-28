@@ -1,12 +1,16 @@
 'use strict';
-const {DOCUMENT_NODE, DOCUMENT_FRAGMENT_NODE, DOCUMENT_TYPE_NODE, ELEMENT_NODE, SVG_NAMESPACE} = require('../shared/constants.js');
+const {
+  DOCUMENT_NODE, DOCUMENT_FRAGMENT_NODE, DOCUMENT_TYPE_NODE, ELEMENT_NODE, HTML_NAMESPACE, SVG_NAMESPACE
+} = require('../shared/constants.js');
 
 const {
-  CUSTOM_ELEMENTS, DOM_PARSER, GLOBALS, IMAGE, MUTATION_OBSERVER, DOCTYPE, END, NEXT, MIME, EVENT_TARGET, UPGRADE
+  CUSTOM_ELEMENTS, DOM_PARSER, GLOBALS, IMAGE, MUTATION_OBSERVER, DOCTYPE, END, NEXT, MIME, EVENT_TARGET, UPGRADE, NAMESPACE, PREFIX, CREATE_ELEMENT
 } = require('../shared/symbols.js');
 
 const {Facades, illegalConstructor} = require('../shared/facades.js');
 const {HTMLClasses} = require('../shared/html-classes.js');
+const {htmlClasses} = require('../shared/register-html-class.js');
+const {asciiLowercase, validAttributeName, validElementName, validateAndExtract} = require('../shared/names.js');
 const {Mime} = require('../shared/mime.js');
 const {knownSiblings} = require('../shared/utils.js');
 const {assign, create, defineProperties, setPrototypeOf} = require('../shared/object.js');
@@ -169,12 +173,15 @@ class Document extends NonElementParentNode {
     return this[EVENT_TARGET];
   }
 
-  createAttribute(name) { return new Attr(this, name); }
+  createAttribute(name) {
+    name = validAttributeName(String(name));
+    return new Attr(this, this[MIME].ignoreCase ? asciiLowercase(name) : name);
+  }
   createCDATASection(data) { return new CDATASection(this, data); }
   createComment(textContent) { return new Comment(this, textContent); }
   createDocumentFragment() { return new DocumentFragment(this); }
   createDocumentType(name, publicId, systemId) { return new DocumentType(this, name, publicId, systemId); }
-  createElement(localName) { return new Element(this, localName); }
+  createElement(localName) { return new Element(this, validElementName(String(localName))); }
   createRange() {
     const range = new Range;
     range.commonAncestorContainer = this;
@@ -268,15 +275,37 @@ class Document extends NonElementParentNode {
   getElementsByTagNameNS(_, name) {
     return this.getElementsByTagName(name);
   }
-  createAttributeNS(_, name) {
-    return this.createAttribute(name);
-  }
-  createElementNS(nsp, localName, options) {
-    return nsp === SVG_NAMESPACE ?
-            new SVGElement(this, localName, null) :
-            this.createElement(localName, options);
-  }
   /* c8 ignore stop */
+
+  createAttributeNS(namespace, qualifiedName) {
+    qualifiedName = String(qualifiedName);
+    const {namespace: ns, prefix, localName} = validateAndExtract(namespace, qualifiedName, false);
+    return new Attr(this, qualifiedName, '', ns, prefix, localName);
+  }
+
+  createElementNS(namespace, qualifiedName, options) {
+    const {namespace: ns, prefix, localName} = validateAndExtract(namespace, String(qualifiedName), true);
+    const element = this[CREATE_ELEMENT](ns, localName, prefix);
+    if (ns === HTML_NAMESPACE && options && options.is)
+      element.setAttribute('is', options.is);
+    return element;
+  }
+
+  [CREATE_ELEMENT](namespace, localName, prefix = null) {
+    let element;
+    if (namespace === HTML_NAMESPACE) {
+      const Class = localName === asciiLowercase(localName) && htmlClasses.get(localName);
+      element = new (Class || HTMLClasses.HTMLElement)(this, localName);
+    }
+    else if (namespace === SVG_NAMESPACE)
+      element = new SVGElement(this, localName, null);
+    else
+      element = new Element(this, localName);
+    element[NAMESPACE] = namespace;
+    if (prefix)
+      element[PREFIX] = prefix;
+    return element;
+  }
 }
 exports.Document = Document
 

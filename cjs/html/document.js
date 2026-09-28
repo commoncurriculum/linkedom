@@ -1,13 +1,40 @@
 'use strict';
-const {ELEMENT_NODE} = require('../shared/constants.js');
-const {CUSTOM_ELEMENTS, END, NEXT} = require('../shared/symbols.js');
+const {ELEMENT_NODE, HTML_NAMESPACE} = require('../shared/constants.js');
+const {CREATE_ELEMENT, CUSTOM_ELEMENTS, END, NEXT} = require('../shared/symbols.js');
 const {htmlClasses} = require('../shared/register-html-class.js');
+const {asciiLowercase, validElementName} = require('../shared/names.js');
+const {innerHTML} = require('../shared/serialize-html.js');
 
 const {Document} = require('../interface/document.js');
 const {NodeList} = require('../interface/node-list.js');
 const {customElements} = require('../interface/custom-element-registry.js');
 
 const {HTMLElement} = require('./element.js');
+const {HTMLUnknownElement} = require('./unknown-element.js');
+
+// https://html.spec.whatwg.org/multipage/indices.html#element-interfaces
+const htmlElements = new Set([
+  'abbr', 'acronym', 'address', 'article', 'aside', 'b', 'basefont', 'bdi',
+  'bdo', 'big', 'center', 'cite', 'code', 'dd', 'dfn', 'dt', 'em', 'figcaption',
+  'figure', 'footer', 'header', 'hgroup', 'i', 'kbd', 'main', 'mark', 'nav',
+  'nobr', 'noembed', 'noframes', 'noscript', 'plaintext', 'rb', 'rp', 'rt',
+  'rtc', 'ruby', 's', 'samp', 'search', 'section', 'small', 'strike', 'strong',
+  'sub', 'summary', 'sup', 'tt', 'u', 'var', 'wbr',
+  // interfaces linkedom doesn't implement
+  'col', 'colgroup', 'dialog', 'tbody', 'tfoot', 'thead'
+]);
+
+const asciiWhitespace = /[\t\n\f\r ]+/g;
+
+const htmlChild = ({documentElement}, matches) => {
+  if (documentElement && documentElement.localName === 'html') {
+    for (const child of documentElement.children) {
+      if (matches(child.localName) && child.namespaceURI === HTML_NAMESPACE)
+        return child;
+    }
+  }
+  return null;
+};
 
 const createHTMLElement = (ownerDocument, builtin, localName, options) => {
   if (!builtin && htmlClasses.has(localName)) {
@@ -24,14 +51,26 @@ const createHTMLElement = (ownerDocument, builtin, localName, options) => {
       return element;
     }
   }
-  return new HTMLElement(ownerDocument, localName);
+  const Class = htmlClasses.get(localName) || (
+    localName.includes('-') || htmlElements.has(localName) ? HTMLElement : HTMLUnknownElement
+  );
+  return new Class(ownerDocument, localName);
 };
+exports.createHTMLElement = createHTMLElement;
 
 /**
  * @implements globalThis.HTMLDocument
  */
 class HTMLDocument extends Document {
   constructor() { super('text/html'); }
+
+  toString() { return innerHTML(this); }
+
+  [CREATE_ELEMENT](namespace, localName, prefix = null) {
+    return namespace === HTML_NAMESPACE && !prefix ?
+      createHTMLElement(this, false, localName) :
+      super[CREATE_ELEMENT](namespace, localName, prefix);
+  }
 
   get all() {
     const nodeList = new NodeList;
@@ -48,53 +87,40 @@ class HTMLDocument extends Document {
   }
 
   /**
-   * @type HTMLHeadElement
+   * @type HTMLHeadElement?
    */
   get head() {
-    const {documentElement} = this;
-    let {firstElementChild} = documentElement;
-    if (!firstElementChild || firstElementChild.tagName !== 'HEAD') {
-      firstElementChild = this.createElement('head');
-      documentElement.prepend(firstElementChild);
-    }
-    return firstElementChild;
+    return htmlChild(this, name => name === 'head');
   }
 
   /**
-   * @type HTMLBodyElement
+   * @type HTMLBodyElement?
    */
   get body() {
-    const {head} = this;
-    let {nextElementSibling} = head;
-    if (!nextElementSibling || nextElementSibling.tagName !== 'BODY') {
-      nextElementSibling = this.createElement('body');
-      head.after(nextElementSibling);
-    }
-    return nextElementSibling;
+    return htmlChild(this, name => name === 'body' || name === 'frameset');
   }
 
   /**
-   * @type HTMLTitleElement
+   * @type string
    */
   get title() {
-    const {head} = this;
-    return head.getElementsByTagName('title').at(0)?.textContent || '';
+    const title = this.getElementsByTagName('title').at(0);
+    return title ? title.textContent.replace(asciiWhitespace, ' ').trim() : '';
   }
 
   set title(textContent) {
     const {head} = this;
-    let title = head.getElementsByTagName('title').at(0);
-    if (title)
-      title.textContent = textContent;
-    else {
-      head.insertBefore(
-        this.createElement('title'),
-        head.firstChild
-      ).textContent = textContent;
+    let title = this.getElementsByTagName('title').at(0);
+    if (!title) {
+      if (!head)
+        return;
+      title = head.appendChild(this.createElement('title'));
     }
+    title.textContent = textContent;
   }
 
   createElement(localName, options) {
+    localName = asciiLowercase(validElementName(String(localName)));
     const builtin = !!(options && options.is);
     const element = createHTMLElement(this, builtin, localName, options);
     if (builtin)

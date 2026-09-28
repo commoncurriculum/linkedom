@@ -69,6 +69,8 @@ export class Node extends EventTarget implements globalThis.Node {
     removeChild(child: Node): Node;
     hasChildNodes(): boolean;
     isSameNode(node: any): boolean;
+    lookupNamespaceURI(prefix: any): any;
+    isDefaultNamespace(namespace: any): boolean;
     compareDocumentPosition(target: any): number;
     isEqualNode(node: any): boolean;
     /**
