@@ -10,6 +10,7 @@ export function ImageClass(ownerDocument: any): {
         ownerDocument: any;
         localName: any;
         readonly namespaceURI: string;
+        readonly style: any;
         blur(): void;
         click(): void;
         readonly accessKeyLabel: string;
@@ -91,6 +92,7 @@ export function ImageClass(ownerDocument: any): {
         onpointerout: any;
         onpointerover: any;
         onpointerup: any;
+        [STYLE]: any;
         readonly isConnected: boolean;
         readonly parentElement: any;
         readonly previousSibling: any;
@@ -119,7 +121,6 @@ export function ImageClass(ownerDocument: any): {
             width: number;
         };
         nonce: any;
-        readonly style: any;
         tabIndex: number;
         slot: any;
         readonly innerText: string;
@@ -157,7 +158,6 @@ export function ImageClass(ownerDocument: any): {
         getElementsByTagNameNS(_: any, name: any): import("./node-list.js").NodeList;
         [CLASS_LIST]: any;
         [DATASET]: any;
-        [STYLE]: any;
         readonly childNodes: import("./node-list.js").NodeList;
         readonly children: import("./node-list.js").NodeList;
         readonly firstChild: import("../mixin/parent-node.js").NodeStruct;

@@ -17716,6 +17716,585 @@ class DOMTokenList extends Set {
   toString() { return this.value; }
 }
 
+// https://dom.spec.whatwg.org/#interface-event
+
+/* c8 ignore start */
+
+// Node 15 has Event but 14 and 12 don't
+const BUBBLING_PHASE = 3;
+const AT_TARGET = 2;
+const CAPTURING_PHASE = 1;
+const NONE$1 = 0;
+
+function getCurrentTarget(ev) {
+  return ev.currentTarget;
+}
+
+/**
+ * @implements globalThis.Event
+ */
+class GlobalEvent {
+    static get BUBBLING_PHASE() { return BUBBLING_PHASE; }
+    static get AT_TARGET() { return AT_TARGET; }
+    static get CAPTURING_PHASE() { return CAPTURING_PHASE; }
+    static get NONE() { return NONE$1; }
+
+    constructor(type, eventInitDict = {}) {
+      this.type = type;
+      this.bubbles = !!eventInitDict.bubbles;
+      this.cancelBubble = false;
+      this._stopImmediatePropagationFlag = false;
+      this.cancelable = !!eventInitDict.cancelable;
+      this.eventPhase = this.NONE;
+      this.timeStamp = Date.now();
+      this.defaultPrevented = false;
+      this.originalTarget = null;
+      this.returnValue = null;
+      this.srcElement = null;
+      this.target = null;
+      this._path = [];
+    }
+
+    get BUBBLING_PHASE() { return BUBBLING_PHASE; }
+    get AT_TARGET() { return AT_TARGET; }
+    get CAPTURING_PHASE() { return CAPTURING_PHASE; }
+    get NONE() { return NONE$1; }
+
+    preventDefault() { this.defaultPrevented = true; }
+
+    // simplified implementation, should be https://dom.spec.whatwg.org/#dom-event-composedpath
+    composedPath() {
+      return this._path.map(getCurrentTarget);
+    }
+
+    stopPropagation() {
+      this.cancelBubble = true;
+    }
+    
+    stopImmediatePropagation() {
+      this.stopPropagation();
+      this._stopImmediatePropagationFlag = true;
+    }
+  }
+
+/* c8 ignore stop */
+
+/**
+ * @implements globalThis.NamedNodeMap
+ */
+class NamedNodeMap extends Array {
+  constructor(ownerElement) {
+    super();
+    this.ownerElement = ownerElement;
+  }
+
+  getNamedItem(name) {
+    return this.ownerElement.getAttributeNode(name);
+  }
+
+  setNamedItem(attr) {
+    this.ownerElement.setAttributeNode(attr);
+    this.unshift(attr);
+  }
+
+  removeNamedItem(name) {
+    const item = this.getNamedItem(name);
+    this.ownerElement.removeAttribute(name);
+    this.splice(this.indexOf(item), 1);
+  }
+
+  item(index) {
+    return index < this.length ? this[index] : null;
+  }
+
+  /* c8 ignore start */
+  getNamedItemNS(_, name) {
+    return this.getNamedItem(name);
+  }
+
+  setNamedItemNS(_, attr) {
+    return this.setNamedItem(attr);
+  }
+
+  removeNamedItemNS(_, name) {
+    return this.removeNamedItem(name);
+  }
+  /* c8 ignore stop */
+}
+
+/**
+ * @implements globalThis.ShadowRoot
+ */
+let ShadowRoot$1 = class ShadowRoot extends NonElementParentNode {
+  constructor(host) {
+    super(host.ownerDocument, '#shadow-root', DOCUMENT_FRAGMENT_NODE);
+    this.host = host;
+  }
+
+  get innerHTML() {
+    return getInnerHtml(this);
+  }
+  set innerHTML(html) {
+    setInnerHtml(this, html);
+  }
+};
+
+// https://dom.spec.whatwg.org/#interface-element
+
+
+// <utils>
+const attributesHandler = {
+  get(target, key) {
+    return key in target ? target[key] : target.find(({name}) => name === key);
+  }
+};
+
+const create$4 = (ownerDocument, element, localName)  => {
+  const clone = element.namespaceURI === HTML_NAMESPACE && ignoreCase(element) && localName === asciiLowercase(localName) ?
+    ownerDocument.createElement(localName) :
+    new element.constructor(ownerDocument, localName);
+  if (NAMESPACE$8 in element)
+    clone[NAMESPACE$8] = element[NAMESPACE$8];
+  if (PREFIX in element)
+    clone[PREFIX] = element[PREFIX];
+  if ('ownerSVGElement' in element)
+    clone.ownerSVGElement = element.ownerSVGElement;
+  return clone;
+};
+
+// https://dom.spec.whatwg.org/#concept-element-attributes-get-by-name
+const qualify = (element, name) => (
+  element.namespaceURI === HTML_NAMESPACE && ignoreCase(element) ?
+    asciiLowercase($String(name)) : $String(name)
+);
+
+const attributeNamed = (element, name) => {
+  let next = element[NEXT];
+  while (next.nodeType === ATTRIBUTE_NODE) {
+    if (next.name === name)
+      return next;
+    next = next[NEXT];
+  }
+  return null;
+};
+
+const attributeNS = (element, namespace, localName) => {
+  namespace = namespace === '' || namespace === undefined ? null : namespace;
+  localName = $String(localName);
+  let next = element[NEXT];
+  while (next.nodeType === ATTRIBUTE_NODE) {
+    if (next.localName === localName && next.namespaceURI === namespace)
+      return next;
+    next = next[NEXT];
+  }
+  return null;
+};
+
+// </utils>
+
+/**
+ * @implements globalThis.Element
+ */
+let Element$1 = class Element extends ParentNode {
+  constructor(ownerDocument, localName) {
+    super(ownerDocument, localName, ELEMENT_NODE);
+    this[CLASS_LIST] = null;
+    this[DATASET] = null;
+    this[STYLE] = null;
+  }
+
+  // <Mixins>
+  get isConnected() { return isConnected(this); }
+  get parentElement() { return parentElement(this); }
+  get previousSibling() { return previousSibling(this); }
+  get nextSibling() { return nextSibling(this); }
+  get namespaceURI() {
+    const {[NAMESPACE$8]: namespace} = this;
+    if (namespace !== undefined)
+      return namespace;
+    return this.ownerDocument[MIME].ignoreCase ? HTML_NAMESPACE : null;
+  }
+  get prefix() { return this[PREFIX] || null; }
+
+  get previousElementSibling() { return previousElementSibling(this); }
+  get nextElementSibling() { return nextElementSibling$1(this); }
+
+  before(...nodes) { before(this, nodes); }
+  after(...nodes) { after(this, nodes); }
+  replaceWith(...nodes) { replaceWith(this, nodes); }
+  remove() { remove(this[PREV], this, this[END][NEXT]); }
+  // </Mixins>
+
+  // <specialGetters>
+  get id() { return stringAttribute.get(this, 'id'); }
+  set id(value) { stringAttribute.set(this, 'id', value); }
+
+  get className() { return this.getAttribute('class') ?? ''; }
+  set className(value) { this.setAttribute('class', value); }
+
+  get nodeName() { return this.tagName; }
+  get tagName() {
+    const {localName, [PREFIX]: prefix} = this;
+    const name = prefix ? `${prefix}:${localName}` : localName;
+    return this.namespaceURI === HTML_NAMESPACE && ignoreCase(this) ? asciiUppercase(name) : name;
+  }
+
+  get classList() {
+    return this[CLASS_LIST] || (
+      this[CLASS_LIST] = new DOMTokenList(this)
+    );
+  }
+
+  get dataset() {
+    return this[DATASET] || (
+      this[DATASET] = new DOMStringMap(this)
+    );
+  }
+
+  getBoundingClientRect() {
+    return {
+      x: 0,
+      y: 0,
+      bottom: 0,
+      height: 0,
+      left: 0,
+      right: 0,
+      top: 0,
+      width: 0
+    };
+  }
+
+  get nonce() { return stringAttribute.get(this, 'nonce'); }
+  set nonce(value) { stringAttribute.set(this, 'nonce', value); }
+
+  get tabIndex() { return numericAttribute.get(this, 'tabindex') || -1; }
+  set tabIndex(value) { numericAttribute.set(this, 'tabindex', value); }
+
+  get slot() { return stringAttribute.get(this, 'slot'); }
+  set slot(value) { stringAttribute.set(this, 'slot', value); }
+  // </specialGetters>
+
+
+  // <contentRelated>
+  get innerText() {
+    const text = [];
+    let {[NEXT]: next, [END]: end} = this;
+    while (next !== end) {
+      if (next.nodeType === TEXT_NODE) {
+        text.push(next.textContent.replace(/\s+/g, ' '));
+      } else if(
+        text.length && next[NEXT] != end &&
+        BLOCK_ELEMENTS.has(next.tagName)
+      ) {
+        text.push('\n');
+      }
+      next = next[NEXT];
+    }
+    return text.join('');
+  }
+
+  /**
+   * @returns {String}
+   */
+  get textContent() {
+    const text = [];
+    let {[NEXT]: next, [END]: end} = this;
+    while (next !== end) {
+      const nodeType = next.nodeType;
+      if (nodeType === TEXT_NODE || nodeType === CDATA_SECTION_NODE)
+        text.push(next.textContent);
+      next = next[NEXT];
+    }
+    return text.join('');
+  }
+
+  set textContent(text) {
+    this.replaceChildren();
+    if (text != null && text !== '')
+      this.appendChild(new Text$1(this.ownerDocument, text));
+  }
+
+  get innerHTML() {
+    return getInnerHtml(this);
+  }
+  set innerHTML(html) {
+    setInnerHtml(this, html);
+  }
+
+  get outerHTML() { return ignoreCase(this) ? outerHTML(this) : serializeXML(this, true); }
+  set outerHTML(html) {
+    const {parentNode} = this;
+    if (!parentNode)
+      return;
+    if (parentNode.nodeType === DOCUMENT_NODE)
+      throw new DOMException('A document can\'t take markup in place of its element.', 'NoModificationAllowedError');
+    const context = parentNode.nodeType === ELEMENT_NODE ?
+      parentNode : this.ownerDocument.createElement('body');
+    parentNode.replaceChild(parseFragment(context, html), this);
+  }
+  // </contentRelated>
+
+  // <attributes>
+  get attributes() {
+    const attributes = new NamedNodeMap(this);
+    let next = this[NEXT];
+    while (next.nodeType === ATTRIBUTE_NODE) {
+      attributes.push(next);
+      next = next[NEXT];
+    }
+    return new Proxy(attributes, attributesHandler);
+  }
+
+  focus() { this.dispatchEvent(new GlobalEvent('focus')); }
+
+  getAttribute(name) {
+    const attribute = this.getAttributeNode(name);
+    return attribute && attribute.value;
+  }
+
+  getAttributeNode(name) {
+    return attributeNamed(this, qualify(this, name));
+  }
+
+  getAttributeNS(namespace, localName) {
+    const attribute = attributeNS(this, namespace, localName);
+    return attribute && attribute.value;
+  }
+
+  getAttributeNodeNS(namespace, localName) {
+    return attributeNS(this, namespace, localName);
+  }
+
+  getAttributeNames() {
+    const attributes = new NodeList;
+    let next = this[NEXT];
+    while (next.nodeType === ATTRIBUTE_NODE) {
+      attributes.push(next.name);
+      next = next[NEXT];
+    }
+    return attributes;
+  }
+
+  hasAttribute(name) { return !!this.getAttributeNode(name); }
+  hasAttributeNS(namespace, localName) { return !!attributeNS(this, namespace, localName); }
+  hasAttributes() { return this[NEXT].nodeType === ATTRIBUTE_NODE; }
+
+  removeAttribute(name) {
+    const attribute = this.getAttributeNode(name);
+    if (attribute)
+      removeAttribute(this, attribute);
+  }
+
+  removeAttributeNS(namespace, localName) {
+    const attribute = attributeNS(this, namespace, localName);
+    if (attribute)
+      removeAttribute(this, attribute);
+  }
+
+  removeAttributeNode(attribute) {
+    let next = this[NEXT];
+    while (next.nodeType === ATTRIBUTE_NODE) {
+      if (next === attribute) {
+        removeAttribute(this, next);
+        return;
+      }
+      next = next[NEXT];
+    }
+  }
+
+  setAttribute(name, value) {
+    name = qualify(this, validAttributeName($String(name)));
+    const attribute = attributeNamed(this, name);
+    if (attribute)
+      attribute.value = value;
+    else
+      setAttribute(this, new Attr$1(this.ownerDocument, name, value));
+  }
+
+  setAttributeNS(namespace, qualifiedName, value) {
+    qualifiedName = $String(qualifiedName);
+    const {namespace: ns, prefix, localName} = validateAndExtract(namespace, qualifiedName, false);
+    const attribute = attributeNS(this, ns, localName);
+    if (attribute)
+      attribute.value = value;
+    else
+      setAttribute(this, new Attr$1(this.ownerDocument, qualifiedName, value, ns, prefix, localName));
+  }
+
+  setAttributeNode(attribute) {
+    const {ownerElement, namespaceURI, localName} = attribute;
+    if (ownerElement && ownerElement !== this)
+      throw new DOMException('The attribute belongs to another element.', 'InUseAttributeError');
+    const previously = attributeNS(this, namespaceURI, localName);
+    if (previously === attribute)
+      return attribute;
+    if (previously)
+      replaceAttribute(this, previously, attribute);
+    else
+      setAttribute(this, attribute);
+    return previously;
+  }
+
+  setAttributeNodeNS(attribute) { return this.setAttributeNode(attribute); }
+
+  toggleAttribute(name, force) {
+    name = qualify(this, validAttributeName($String(name)));
+    const attribute = attributeNamed(this, name);
+    if (!attribute) {
+      if (force === undefined || force) {
+        setAttribute(this, new Attr$1(this.ownerDocument, name, ''));
+        return true;
+      }
+      return false;
+    }
+    if (force === undefined || !force) {
+      removeAttribute(this, attribute);
+      return false;
+    }
+    return true;
+  }
+  // </attributes>
+
+  // <ShadowDOM>
+  get shadowRoot() {
+    if (shadowRoots.has(this)) {
+      const {mode, shadowRoot} = shadowRoots.get(this);
+      if (mode === 'open')
+        return shadowRoot;
+    }
+    return null;
+  }
+
+  attachShadow(init) {
+    if (shadowRoots.has(this))
+      throw new Error('operation not supported');
+    // TODO: shadowRoot should be likely a specialized class that extends DocumentFragment
+    //       but until DSD is out, I am not sure I should spend time on this.
+    const shadowRoot = new ShadowRoot$1(this);
+    shadowRoots.set(this, {
+      mode: init.mode,
+      shadowRoot
+    });
+    return shadowRoot;
+  }
+  // </ShadowDOM>
+
+  // <selectors>
+  matches(selectors) { return matches(this, selectors); }
+  closest(selectors) {
+    let parentElement = this;
+    const matches = prepareMatch(parentElement, selectors);
+    while (parentElement && !matches(parentElement))
+      parentElement = parentElement.parentElement;
+    return parentElement;
+  }
+  // </selectors>
+
+  // <insertAdjacent>
+  insertAdjacentElement(position, element) {
+    const {parentElement} = this;
+    switch (position) {
+      case 'beforebegin':
+        if (parentElement) {
+          parentElement.insertBefore(element, this);
+          break;
+        }
+        return null;
+      case 'afterbegin':
+        this.insertBefore(element, this.firstChild);
+        break;
+      case 'beforeend':
+        this.insertBefore(element, null);
+        break;
+      case 'afterend':
+        if (parentElement) {
+          parentElement.insertBefore(element, this.nextSibling);
+          break;
+        }
+        return null;
+    }
+    return element;
+  }
+
+  insertAdjacentHTML(position, html) {
+    let context = this;
+    switch (asciiLowercase($String(position))) {
+      case 'beforebegin':
+      case 'afterend': {
+        context = this.parentNode;
+        if (!context || context.nodeType === DOCUMENT_NODE)
+          throw new DOMException('The element has no parent to take the markup.', 'NoModificationAllowedError');
+        break;
+      }
+    }
+    this.insertAdjacentElement(position, parseFragment(adjacentContext(context), html));
+  }
+
+  insertAdjacentText(position, text) {
+    const node = this.ownerDocument.createTextNode(text);
+    this.insertAdjacentElement(position, node);
+  }
+  // </insertAdjacent>
+
+  cloneNode(deep = false) {
+    const {ownerDocument, localName} = this;
+    const addNext = next => {
+      next.parentNode = parentNode;
+      knownAdjacent($next, next);
+      $next = next;
+    };
+    const clone = create$4(ownerDocument, this, localName);
+    let parentNode = clone, $next = clone;
+    let {[NEXT]: next, [END]: prev} = this;
+    while (next !== prev && (deep || next.nodeType === ATTRIBUTE_NODE)) {
+      switch (next.nodeType) {
+        case NODE_END:
+          knownAdjacent($next, parentNode[END]);
+          $next = parentNode[END];
+          parentNode = parentNode.parentNode;
+          break;
+        case ELEMENT_NODE: {
+          const node = create$4(ownerDocument, next, next.localName);
+          addNext(node);
+          parentNode = node;
+          break;
+        }
+        case ATTRIBUTE_NODE: {
+          const attr = next.cloneNode(deep);
+          attr.ownerElement = parentNode;
+          addNext(attr);
+          break;
+        }
+        case TEXT_NODE:
+        case COMMENT_NODE:
+        case CDATA_SECTION_NODE:
+          addNext(next.cloneNode(deep));
+          break;
+      }
+      next = next[NEXT];
+    }
+    knownAdjacent($next, clone[END]);
+    return clone;
+  }
+
+  // <custom>
+  toString() {
+    return ignoreCase(this) ? outerHTML(this) : serializeXML(this, false);
+  }
+
+  toJSON() {
+    const json = [];
+    elementAsJSON(this, json);
+    return json;
+  }
+  // </custom>
+
+
+  /* c8 ignore start */
+  getElementsByTagNameNS(_, name) { return this.getElementsByTagName(name); }
+  /* c8 ignore stop */
+};
+
 /**
  * @file generational-cache.js
  * A generational pseudo-LRU cache with strict maximum size limits.
@@ -17954,21 +18533,21 @@ var ANGLE = "deg|g?rad|turn";
 var LENGTH = "[cm]m|[dls]?v(?:[bhiw]|max|min)|in|p[ctx]|q|r?(?:[cl]h|cap|e[mx]|ic)";
 var NUM$1 = `[+-]?(?:${_DIGIT}(?:\\.\\d*)?|\\.\\d+)(?:e-?${_DIGIT})?`;
 var NUM_POSITIVE = `\\+?(?:${_DIGIT}(?:\\.\\d*)?|\\.\\d+)(?:e-?${_DIGIT})?`;
-var NONE$1 = "none";
+var NONE = "none";
 var PCT$1 = `${NUM$1}%`;
 var SYN_FN_CALC = `^(?:${_CALC})\\(|(?<=[*\\/\\s\\(])(?:${_CALC})\\(`;
 var SYN_FN_MATH_START = `^(?:${_MATH})\\($`;
 var SYN_FN_VAR = "^var\\(|(?<=[*\\/\\s\\(])var\\(";
 var SYN_FN_VAR_START = `^(?:${_VAR})\\(`;
-var _ALPHA = `(?:\\s*\\/\\s*(?:${NUM$1}|${PCT$1}|${NONE$1}))?`;
+var _ALPHA = `(?:\\s*\\/\\s*(?:${NUM$1}|${PCT$1}|${NONE}))?`;
 var _ALPHA_LV3 = `(?:\\s*,\\s*(?:${NUM$1}|${PCT$1}))?`;
 var _COLOR_FUNC = "(?:ok)?l(?:ab|ch)|color|hsla?|hwb|rgba?";
 var _COLOR_KEY = "[a-z]+|#[\\da-f]{3}|#[\\da-f]{4}|#[\\da-f]{6}|#[\\da-f]{8}";
 var _CS_HUE = "(?:ok)?lch|hsl|hwb";
 var _CS_HUE_ARC = "(?:de|in)creasing|longer|shorter";
 var _NUM_ANGLE = `${NUM$1}(?:${ANGLE})?`;
-var _NUM_ANGLE_NONE = `(?:${NUM$1}(?:${ANGLE})?|${NONE$1})`;
-var _NUM_PCT_NONE = `(?:${NUM$1}|${PCT$1}|${NONE$1})`;
+var _NUM_ANGLE_NONE = `(?:${NUM$1}(?:${ANGLE})?|${NONE})`;
+var _NUM_PCT_NONE = `(?:${NUM$1}|${PCT$1}|${NONE})`;
 var CS_HUE = `(?:${_CS_HUE})(?:\\s(?:${_CS_HUE_ARC})\\shue)?`;
 var CS_HUE_CAPT = `(${_CS_HUE})(?:\\s(${_CS_HUE_ARC})\\shue)?`;
 var CS_LAB = "(?:ok)?lab";
@@ -19888,7 +20467,7 @@ var parseRgb = (value, opt = {}) => {
 		r,
 		g,
 		b,
-		format === "mixValue" && v4 === "none" ? NONE$1 : alpha
+		format === "mixValue" && v4 === "none" ? NONE : alpha
 	];
 };
 /**
@@ -20914,7 +21493,7 @@ var convertColorToHsl = (value, opt = {}) => {
 		alpha
 	];
 	return [
-		format === "mixValue" && s === 0 ? NONE$1 : h,
+		format === "mixValue" && s === 0 ? NONE : h,
 		s,
 		l,
 		alpha
@@ -20967,7 +21546,7 @@ var convertColorToHwb = (value, opt = {}) => {
 		alpha
 	];
 	return [
-		format === "mixValue" && w + b >= 100 ? NONE$1 : h,
+		format === "mixValue" && w + b >= 100 ? NONE : h,
 		w,
 		b,
 		alpha
@@ -21053,7 +21632,7 @@ var convertColorToLch = (value, opt = {}) => {
 	return [
 		l,
 		c,
-		format === "mixValue" && c === 0 ? NONE$1 : h,
+		format === "mixValue" && c === 0 ? NONE : h,
 		alpha
 	];
 };
@@ -21135,7 +21714,7 @@ var convertColorToOklch = (value, opt = {}) => {
 	return [
 		l,
 		c,
-		format === "mixValue" && c === 0 ? NONE$1 : h,
+		format === "mixValue" && c === 0 ? NONE : h,
 		alpha
 	];
 };
@@ -21349,20 +21928,20 @@ var resolveColorMix = (value, opt = {}) => {
 		let rgbA, rgbB;
 		if (colorSpace === "srgb") {
 			if (REG_CURRENT.test(colorA)) rgbA = [
-				NONE$1,
-				NONE$1,
-				NONE$1,
-				NONE$1
+				NONE,
+				NONE,
+				NONE,
+				NONE
 			];
 			else rgbA = convertColorToRgb(colorA, {
 				colorSpace,
 				format: VAL_MIX
 			});
 			if (REG_CURRENT.test(colorB)) rgbB = [
-				NONE$1,
-				NONE$1,
-				NONE$1,
-				NONE$1
+				NONE,
+				NONE,
+				NONE,
+				NONE
 			];
 			else rgbB = convertColorToRgb(colorB, {
 				colorSpace,
@@ -21370,20 +21949,20 @@ var resolveColorMix = (value, opt = {}) => {
 			});
 		} else {
 			if (REG_CURRENT.test(colorA)) rgbA = [
-				NONE$1,
-				NONE$1,
-				NONE$1,
-				NONE$1
+				NONE,
+				NONE,
+				NONE,
+				NONE
 			];
 			else rgbA = convertColorToLinearRgb(colorA, {
 				colorSpace,
 				format: VAL_MIX
 			});
 			if (REG_CURRENT.test(colorB)) rgbB = [
-				NONE$1,
-				NONE$1,
-				NONE$1,
-				NONE$1
+				NONE,
+				NONE,
+				NONE,
+				NONE
 			];
 			else rgbB = convertColorToLinearRgb(colorB, {
 				colorSpace,
@@ -21424,10 +22003,10 @@ var resolveColorMix = (value, opt = {}) => {
 		if (format === "computedValue") {
 			const res = [
 				colorSpace,
-				rNone ? NONE$1 : roundToPrecision$1(r, HEX$2),
-				gNone ? NONE$1 : roundToPrecision$1(g, HEX$2),
-				bNone ? NONE$1 : roundToPrecision$1(b, HEX$2),
-				alphaNone ? NONE$1 : alpha * m
+				rNone ? NONE : roundToPrecision$1(r, HEX$2),
+				gNone ? NONE : roundToPrecision$1(g, HEX$2),
+				bNone ? NONE : roundToPrecision$1(b, HEX$2),
+				alphaNone ? NONE : alpha * m
 			];
 			setCache(cacheKey, res);
 			return res;
@@ -21438,10 +22017,10 @@ var resolveColorMix = (value, opt = {}) => {
 	} else if (REG_CS_XYZ.test(colorSpace)) {
 		let xyzA, xyzB;
 		if (REG_CURRENT.test(colorA)) xyzA = [
-			NONE$1,
-			NONE$1,
-			NONE$1,
-			NONE$1
+			NONE,
+			NONE,
+			NONE,
+			NONE
 		];
 		else xyzA = convertColorToXyz(colorA, {
 			colorSpace,
@@ -21449,10 +22028,10 @@ var resolveColorMix = (value, opt = {}) => {
 			format: VAL_MIX
 		});
 		if (REG_CURRENT.test(colorB)) xyzB = [
-			NONE$1,
-			NONE$1,
-			NONE$1,
-			NONE$1
+			NONE,
+			NONE,
+			NONE,
+			NONE
 		];
 		else xyzB = convertColorToXyz(colorB, {
 			colorSpace,
@@ -21494,10 +22073,10 @@ var resolveColorMix = (value, opt = {}) => {
 		if (format === "computedValue") {
 			const res = [
 				colorSpace,
-				xNone ? NONE$1 : roundToPrecision$1(x, HEX$2),
-				yNone ? NONE$1 : roundToPrecision$1(y, HEX$2),
-				zNone ? NONE$1 : roundToPrecision$1(z, HEX$2),
-				alphaNone ? NONE$1 : alpha * m
+				xNone ? NONE : roundToPrecision$1(x, HEX$2),
+				yNone ? NONE : roundToPrecision$1(y, HEX$2),
+				zNone ? NONE : roundToPrecision$1(z, HEX$2),
+				alphaNone ? NONE : alpha * m
 			];
 			setCache(cacheKey, res);
 			return res;
@@ -21516,20 +22095,20 @@ var resolveColorMix = (value, opt = {}) => {
 		let hslA, hslB;
 		if (colorSpace === "hsl") {
 			if (REG_CURRENT.test(colorA)) hslA = [
-				NONE$1,
-				NONE$1,
-				NONE$1,
-				NONE$1
+				NONE,
+				NONE,
+				NONE,
+				NONE
 			];
 			else hslA = convertColorToHsl(colorA, {
 				colorSpace,
 				format: VAL_MIX
 			});
 			if (REG_CURRENT.test(colorB)) hslB = [
-				NONE$1,
-				NONE$1,
-				NONE$1,
-				NONE$1
+				NONE,
+				NONE,
+				NONE,
+				NONE
 			];
 			else hslB = convertColorToHsl(colorB, {
 				colorSpace,
@@ -21537,20 +22116,20 @@ var resolveColorMix = (value, opt = {}) => {
 			});
 		} else {
 			if (REG_CURRENT.test(colorA)) hslA = [
-				NONE$1,
-				NONE$1,
-				NONE$1,
-				NONE$1
+				NONE,
+				NONE,
+				NONE,
+				NONE
 			];
 			else hslA = convertColorToHwb(colorA, {
 				colorSpace,
 				format: VAL_MIX
 			});
 			if (REG_CURRENT.test(colorB)) hslB = [
-				NONE$1,
-				NONE$1,
-				NONE$1,
-				NONE$1
+				NONE,
+				NONE,
+				NONE,
+				NONE
 			];
 			else hslB = convertColorToHwb(colorB, {
 				colorSpace,
@@ -21593,7 +22172,7 @@ var resolveColorMix = (value, opt = {}) => {
 				roundToPrecision$1(r / MAX_RGB$1, HEX$2),
 				roundToPrecision$1(g / MAX_RGB$1, HEX$2),
 				roundToPrecision$1(b / MAX_RGB$1, HEX$2),
-				alphaNone ? NONE$1 : alpha * m
+				alphaNone ? NONE : alpha * m
 			];
 			setCache(cacheKey, res);
 			return res;
@@ -21602,20 +22181,20 @@ var resolveColorMix = (value, opt = {}) => {
 		let lchA, lchB;
 		if (colorSpace === "lch") {
 			if (REG_CURRENT.test(colorA)) lchA = [
-				NONE$1,
-				NONE$1,
-				NONE$1,
-				NONE$1
+				NONE,
+				NONE,
+				NONE,
+				NONE
 			];
 			else lchA = convertColorToLch(colorA, {
 				colorSpace,
 				format: VAL_MIX
 			});
 			if (REG_CURRENT.test(colorB)) lchB = [
-				NONE$1,
-				NONE$1,
-				NONE$1,
-				NONE$1
+				NONE,
+				NONE,
+				NONE,
+				NONE
 			];
 			else lchB = convertColorToLch(colorB, {
 				colorSpace,
@@ -21623,20 +22202,20 @@ var resolveColorMix = (value, opt = {}) => {
 			});
 		} else {
 			if (REG_CURRENT.test(colorA)) lchA = [
-				NONE$1,
-				NONE$1,
-				NONE$1,
-				NONE$1
+				NONE,
+				NONE,
+				NONE,
+				NONE
 			];
 			else lchA = convertColorToOklch(colorA, {
 				colorSpace,
 				format: VAL_MIX
 			});
 			if (REG_CURRENT.test(colorB)) lchB = [
-				NONE$1,
-				NONE$1,
-				NONE$1,
-				NONE$1
+				NONE,
+				NONE,
+				NONE,
+				NONE
 			];
 			else lchB = convertColorToOklch(colorB, {
 				colorSpace,
@@ -21678,10 +22257,10 @@ var resolveColorMix = (value, opt = {}) => {
 		if (format === "computedValue") {
 			const res = [
 				colorSpace,
-				lNone ? NONE$1 : roundToPrecision$1(l, HEX$2),
-				cNone ? NONE$1 : roundToPrecision$1(c, HEX$2),
-				hNone ? NONE$1 : roundToPrecision$1(h, HEX$2),
-				alphaNone ? NONE$1 : alpha * m
+				lNone ? NONE : roundToPrecision$1(l, HEX$2),
+				cNone ? NONE : roundToPrecision$1(c, HEX$2),
+				hNone ? NONE : roundToPrecision$1(h, HEX$2),
+				alphaNone ? NONE : alpha * m
 			];
 			setCache(cacheKey, res);
 			return res;
@@ -21691,20 +22270,20 @@ var resolveColorMix = (value, opt = {}) => {
 		let labA, labB;
 		if (colorSpace === "lab") {
 			if (REG_CURRENT.test(colorA)) labA = [
-				NONE$1,
-				NONE$1,
-				NONE$1,
-				NONE$1
+				NONE,
+				NONE,
+				NONE,
+				NONE
 			];
 			else labA = convertColorToLab(colorA, {
 				colorSpace,
 				format: VAL_MIX
 			});
 			if (REG_CURRENT.test(colorB)) labB = [
-				NONE$1,
-				NONE$1,
-				NONE$1,
-				NONE$1
+				NONE,
+				NONE,
+				NONE,
+				NONE
 			];
 			else labB = convertColorToLab(colorB, {
 				colorSpace,
@@ -21712,20 +22291,20 @@ var resolveColorMix = (value, opt = {}) => {
 			});
 		} else {
 			if (REG_CURRENT.test(colorA)) labA = [
-				NONE$1,
-				NONE$1,
-				NONE$1,
-				NONE$1
+				NONE,
+				NONE,
+				NONE,
+				NONE
 			];
 			else labA = convertColorToOklab(colorA, {
 				colorSpace,
 				format: VAL_MIX
 			});
 			if (REG_CURRENT.test(colorB)) labB = [
-				NONE$1,
-				NONE$1,
-				NONE$1,
-				NONE$1
+				NONE,
+				NONE,
+				NONE,
+				NONE
 			];
 			else labB = convertColorToOklab(colorB, {
 				colorSpace,
@@ -21767,10 +22346,10 @@ var resolveColorMix = (value, opt = {}) => {
 		if (format === "computedValue") {
 			const res = [
 				colorSpace,
-				lNone ? NONE$1 : roundToPrecision$1(l, HEX$2),
-				aNone ? NONE$1 : roundToPrecision$1(aO, HEX$2),
-				bNone ? NONE$1 : roundToPrecision$1(bO, HEX$2),
-				alphaNone ? NONE$1 : alpha * m
+				lNone ? NONE : roundToPrecision$1(l, HEX$2),
+				aNone ? NONE : roundToPrecision$1(aO, HEX$2),
+				bNone ? NONE : roundToPrecision$1(bO, HEX$2),
+				alphaNone ? NONE : alpha * m
 			];
 			setCache(cacheKey, res);
 			return res;
@@ -23195,7 +23774,7 @@ function resolveRelativeColor(value, opt = {}) {
 	}
 	const { alpha: alphaComponent, channels: channelsComponent, colorNotation, syntaxFlags } = parsedComponents;
 	let alpha;
-	if (Number.isNaN(Number(alphaComponent))) if (syntaxFlags instanceof Set && syntaxFlags.has(KEY_NONE)) alpha = NONE$1;
+	if (Number.isNaN(Number(alphaComponent))) if (syntaxFlags instanceof Set && syntaxFlags.has(KEY_NONE)) alpha = NONE;
 	else alpha = 0;
 	else alpha = roundToPrecision$1(Number(alphaComponent), OCT);
 	let v1;
@@ -23205,13 +23784,13 @@ function resolveRelativeColor(value, opt = {}) {
 	let resolvedValue;
 	if (REG_CS_CIE.test(colorNotation)) {
 		const hasNone = syntaxFlags instanceof Set && syntaxFlags.has(KEY_NONE);
-		if (Number.isNaN(v1)) if (hasNone) v1 = NONE$1;
+		if (Number.isNaN(v1)) if (hasNone) v1 = NONE;
 		else v1 = 0;
 		else v1 = roundToPrecision$1(v1, HEX);
-		if (Number.isNaN(v2)) if (hasNone) v2 = NONE$1;
+		if (Number.isNaN(v2)) if (hasNone) v2 = NONE;
 		else v2 = 0;
 		else v2 = roundToPrecision$1(v2, HEX);
-		if (Number.isNaN(v3)) if (hasNone) v3 = NONE$1;
+		if (Number.isNaN(v3)) if (hasNone) v3 = NONE;
 		else v3 = 0;
 		else v3 = roundToPrecision$1(v3, HEX);
 		if (alpha === 1) resolvedValue = `${colorNotation}(${v1} ${v2} ${v3})`;
@@ -23229,13 +23808,13 @@ function resolveRelativeColor(value, opt = {}) {
 	} else {
 		const cs = colorNotation === "rgb" ? "srgb" : colorNotation;
 		const hasNone = syntaxFlags instanceof Set && syntaxFlags.has(KEY_NONE);
-		if (Number.isNaN(v1)) if (hasNone) v1 = NONE$1;
+		if (Number.isNaN(v1)) if (hasNone) v1 = NONE;
 		else v1 = 0;
 		else v1 = roundToPrecision$1(v1, DEC);
-		if (Number.isNaN(v2)) if (hasNone) v2 = NONE$1;
+		if (Number.isNaN(v2)) if (hasNone) v2 = NONE;
 		else v2 = 0;
 		else v2 = roundToPrecision$1(v2, DEC);
-		if (Number.isNaN(v3)) if (hasNone) v3 = NONE$1;
+		if (Number.isNaN(v3)) if (hasNone) v3 = NONE;
 		else v3 = 0;
 		else v3 = roundToPrecision$1(v3, DEC);
 		if (alpha === 1) resolvedValue = `color(${cs} ${v1} ${v2} ${v3})`;
@@ -26523,7 +27102,7 @@ function requireTokenizer () {
 	return tokenizer;
 }
 
-var create$4 = {};
+var create$3 = {};
 
 var List = {};
 
@@ -27176,7 +27755,7 @@ function requireSequence () {
 var hasRequiredCreate$4;
 
 function requireCreate$4 () {
-	if (hasRequiredCreate$4) return create$4;
+	if (hasRequiredCreate$4) return create$3;
 	hasRequiredCreate$4 = 1;
 
 	const List = /*@__PURE__*/ requireList();
@@ -27578,11 +28157,11 @@ function requireCreate$4 () {
 	    });
 	}
 
-	create$4.createParser = createParser;
-	return create$4;
+	create$3.createParser = createParser;
+	return create$3;
 }
 
-var create$3 = {};
+var create$2 = {};
 
 var sourceMap = {};
 
@@ -29383,7 +29962,7 @@ function requireTokenBefore () {
 var hasRequiredCreate$3;
 
 function requireCreate$3 () {
-	if (hasRequiredCreate$3) return create$3;
+	if (hasRequiredCreate$3) return create$2;
 	hasRequiredCreate$3 = 1;
 
 	const index = /*@__PURE__*/ requireTokenizer();
@@ -29490,16 +30069,16 @@ function requireCreate$3 () {
 	    };
 	}
 
-	create$3.createGenerator = createGenerator;
-	return create$3;
+	create$2.createGenerator = createGenerator;
+	return create$2;
 }
 
-var create$2 = {};
+var create$1 = {};
 
 var hasRequiredCreate$2;
 
 function requireCreate$2 () {
-	if (hasRequiredCreate$2) return create$2;
+	if (hasRequiredCreate$2) return create$1;
 	hasRequiredCreate$2 = 1;
 
 	const List = /*@__PURE__*/ requireList();
@@ -29531,16 +30110,16 @@ function requireCreate$2 () {
 	    };
 	}
 
-	create$2.createConvertor = createConvertor;
-	return create$2;
+	create$1.createConvertor = createConvertor;
+	return create$1;
 }
 
-var create$1 = {};
+var create = {};
 
 var hasRequiredCreate$1;
 
 function requireCreate$1 () {
-	if (hasRequiredCreate$1) return create$1;
+	if (hasRequiredCreate$1) return create;
 	hasRequiredCreate$1 = 1;
 
 	const { hasOwnProperty } = Object.prototype;
@@ -29831,8 +30410,8 @@ function requireCreate$1 () {
 	    return walk;
 	}
 
-	create$1.createWalker = createWalker;
-	return create$1;
+	create.createWalker = createWalker;
+	return create;
 }
 
 var Lexer = {};
@@ -81739,591 +82318,6 @@ const styleOf = element => {
   return style;
 };
 
-// https://dom.spec.whatwg.org/#interface-event
-
-/* c8 ignore start */
-
-// Node 15 has Event but 14 and 12 don't
-const BUBBLING_PHASE = 3;
-const AT_TARGET = 2;
-const CAPTURING_PHASE = 1;
-const NONE = 0;
-
-function getCurrentTarget(ev) {
-  return ev.currentTarget;
-}
-
-/**
- * @implements globalThis.Event
- */
-class GlobalEvent {
-    static get BUBBLING_PHASE() { return BUBBLING_PHASE; }
-    static get AT_TARGET() { return AT_TARGET; }
-    static get CAPTURING_PHASE() { return CAPTURING_PHASE; }
-    static get NONE() { return NONE; }
-
-    constructor(type, eventInitDict = {}) {
-      this.type = type;
-      this.bubbles = !!eventInitDict.bubbles;
-      this.cancelBubble = false;
-      this._stopImmediatePropagationFlag = false;
-      this.cancelable = !!eventInitDict.cancelable;
-      this.eventPhase = this.NONE;
-      this.timeStamp = Date.now();
-      this.defaultPrevented = false;
-      this.originalTarget = null;
-      this.returnValue = null;
-      this.srcElement = null;
-      this.target = null;
-      this._path = [];
-    }
-
-    get BUBBLING_PHASE() { return BUBBLING_PHASE; }
-    get AT_TARGET() { return AT_TARGET; }
-    get CAPTURING_PHASE() { return CAPTURING_PHASE; }
-    get NONE() { return NONE; }
-
-    preventDefault() { this.defaultPrevented = true; }
-
-    // simplified implementation, should be https://dom.spec.whatwg.org/#dom-event-composedpath
-    composedPath() {
-      return this._path.map(getCurrentTarget);
-    }
-
-    stopPropagation() {
-      this.cancelBubble = true;
-    }
-    
-    stopImmediatePropagation() {
-      this.stopPropagation();
-      this._stopImmediatePropagationFlag = true;
-    }
-  }
-
-/* c8 ignore stop */
-
-/**
- * @implements globalThis.NamedNodeMap
- */
-class NamedNodeMap extends Array {
-  constructor(ownerElement) {
-    super();
-    this.ownerElement = ownerElement;
-  }
-
-  getNamedItem(name) {
-    return this.ownerElement.getAttributeNode(name);
-  }
-
-  setNamedItem(attr) {
-    this.ownerElement.setAttributeNode(attr);
-    this.unshift(attr);
-  }
-
-  removeNamedItem(name) {
-    const item = this.getNamedItem(name);
-    this.ownerElement.removeAttribute(name);
-    this.splice(this.indexOf(item), 1);
-  }
-
-  item(index) {
-    return index < this.length ? this[index] : null;
-  }
-
-  /* c8 ignore start */
-  getNamedItemNS(_, name) {
-    return this.getNamedItem(name);
-  }
-
-  setNamedItemNS(_, attr) {
-    return this.setNamedItem(attr);
-  }
-
-  removeNamedItemNS(_, name) {
-    return this.removeNamedItem(name);
-  }
-  /* c8 ignore stop */
-}
-
-/**
- * @implements globalThis.ShadowRoot
- */
-let ShadowRoot$1 = class ShadowRoot extends NonElementParentNode {
-  constructor(host) {
-    super(host.ownerDocument, '#shadow-root', DOCUMENT_FRAGMENT_NODE);
-    this.host = host;
-  }
-
-  get innerHTML() {
-    return getInnerHtml(this);
-  }
-  set innerHTML(html) {
-    setInnerHtml(this, html);
-  }
-};
-
-// https://dom.spec.whatwg.org/#interface-element
-
-
-// <utils>
-const attributesHandler = {
-  get(target, key) {
-    return key in target ? target[key] : target.find(({name}) => name === key);
-  }
-};
-
-const create = (ownerDocument, element, localName)  => {
-  const clone = element.namespaceURI === HTML_NAMESPACE && ignoreCase(element) && localName === asciiLowercase(localName) ?
-    ownerDocument.createElement(localName) :
-    new element.constructor(ownerDocument, localName);
-  if (NAMESPACE$8 in element)
-    clone[NAMESPACE$8] = element[NAMESPACE$8];
-  if (PREFIX in element)
-    clone[PREFIX] = element[PREFIX];
-  if ('ownerSVGElement' in element)
-    clone.ownerSVGElement = element.ownerSVGElement;
-  return clone;
-};
-
-// https://dom.spec.whatwg.org/#concept-element-attributes-get-by-name
-const qualify = (element, name) => (
-  element.namespaceURI === HTML_NAMESPACE && ignoreCase(element) ?
-    asciiLowercase($String(name)) : $String(name)
-);
-
-const attributeNamed = (element, name) => {
-  let next = element[NEXT];
-  while (next.nodeType === ATTRIBUTE_NODE) {
-    if (next.name === name)
-      return next;
-    next = next[NEXT];
-  }
-  return null;
-};
-
-const attributeNS = (element, namespace, localName) => {
-  namespace = namespace === '' || namespace === undefined ? null : namespace;
-  localName = $String(localName);
-  let next = element[NEXT];
-  while (next.nodeType === ATTRIBUTE_NODE) {
-    if (next.localName === localName && next.namespaceURI === namespace)
-      return next;
-    next = next[NEXT];
-  }
-  return null;
-};
-
-// </utils>
-
-/**
- * @implements globalThis.Element
- */
-let Element$1 = class Element extends ParentNode {
-  constructor(ownerDocument, localName) {
-    super(ownerDocument, localName, ELEMENT_NODE);
-    this[CLASS_LIST] = null;
-    this[DATASET] = null;
-    this[STYLE] = null;
-  }
-
-  // <Mixins>
-  get isConnected() { return isConnected(this); }
-  get parentElement() { return parentElement(this); }
-  get previousSibling() { return previousSibling(this); }
-  get nextSibling() { return nextSibling(this); }
-  get namespaceURI() {
-    const {[NAMESPACE$8]: namespace} = this;
-    if (namespace !== undefined)
-      return namespace;
-    return this.ownerDocument[MIME].ignoreCase ? HTML_NAMESPACE : null;
-  }
-  get prefix() { return this[PREFIX] || null; }
-
-  get previousElementSibling() { return previousElementSibling(this); }
-  get nextElementSibling() { return nextElementSibling$1(this); }
-
-  before(...nodes) { before(this, nodes); }
-  after(...nodes) { after(this, nodes); }
-  replaceWith(...nodes) { replaceWith(this, nodes); }
-  remove() { remove(this[PREV], this, this[END][NEXT]); }
-  // </Mixins>
-
-  // <specialGetters>
-  get id() { return stringAttribute.get(this, 'id'); }
-  set id(value) { stringAttribute.set(this, 'id', value); }
-
-  get className() { return this.getAttribute('class') ?? ''; }
-  set className(value) { this.setAttribute('class', value); }
-
-  get nodeName() { return this.tagName; }
-  get tagName() {
-    const {localName, [PREFIX]: prefix} = this;
-    const name = prefix ? `${prefix}:${localName}` : localName;
-    return this.namespaceURI === HTML_NAMESPACE && ignoreCase(this) ? asciiUppercase(name) : name;
-  }
-
-  get classList() {
-    return this[CLASS_LIST] || (
-      this[CLASS_LIST] = new DOMTokenList(this)
-    );
-  }
-
-  get dataset() {
-    return this[DATASET] || (
-      this[DATASET] = new DOMStringMap(this)
-    );
-  }
-
-  getBoundingClientRect() {
-    return {
-      x: 0,
-      y: 0,
-      bottom: 0,
-      height: 0,
-      left: 0,
-      right: 0,
-      top: 0,
-      width: 0
-    };
-  }
-
-  get nonce() { return stringAttribute.get(this, 'nonce'); }
-  set nonce(value) { stringAttribute.set(this, 'nonce', value); }
-
-  get style() {
-    return this[STYLE] || (
-      this[STYLE] = styleOf(this)
-    );
-  }
-
-  get tabIndex() { return numericAttribute.get(this, 'tabindex') || -1; }
-  set tabIndex(value) { numericAttribute.set(this, 'tabindex', value); }
-
-  get slot() { return stringAttribute.get(this, 'slot'); }
-  set slot(value) { stringAttribute.set(this, 'slot', value); }
-  // </specialGetters>
-
-
-  // <contentRelated>
-  get innerText() {
-    const text = [];
-    let {[NEXT]: next, [END]: end} = this;
-    while (next !== end) {
-      if (next.nodeType === TEXT_NODE) {
-        text.push(next.textContent.replace(/\s+/g, ' '));
-      } else if(
-        text.length && next[NEXT] != end &&
-        BLOCK_ELEMENTS.has(next.tagName)
-      ) {
-        text.push('\n');
-      }
-      next = next[NEXT];
-    }
-    return text.join('');
-  }
-
-  /**
-   * @returns {String}
-   */
-  get textContent() {
-    const text = [];
-    let {[NEXT]: next, [END]: end} = this;
-    while (next !== end) {
-      const nodeType = next.nodeType;
-      if (nodeType === TEXT_NODE || nodeType === CDATA_SECTION_NODE)
-        text.push(next.textContent);
-      next = next[NEXT];
-    }
-    return text.join('');
-  }
-
-  set textContent(text) {
-    this.replaceChildren();
-    if (text != null && text !== '')
-      this.appendChild(new Text$1(this.ownerDocument, text));
-  }
-
-  get innerHTML() {
-    return getInnerHtml(this);
-  }
-  set innerHTML(html) {
-    setInnerHtml(this, html);
-  }
-
-  get outerHTML() { return ignoreCase(this) ? outerHTML(this) : serializeXML(this, true); }
-  set outerHTML(html) {
-    const {parentNode} = this;
-    if (!parentNode)
-      return;
-    if (parentNode.nodeType === DOCUMENT_NODE)
-      throw new DOMException('A document can\'t take markup in place of its element.', 'NoModificationAllowedError');
-    const context = parentNode.nodeType === ELEMENT_NODE ?
-      parentNode : this.ownerDocument.createElement('body');
-    parentNode.replaceChild(parseFragment(context, html), this);
-  }
-  // </contentRelated>
-
-  // <attributes>
-  get attributes() {
-    const attributes = new NamedNodeMap(this);
-    let next = this[NEXT];
-    while (next.nodeType === ATTRIBUTE_NODE) {
-      attributes.push(next);
-      next = next[NEXT];
-    }
-    return new Proxy(attributes, attributesHandler);
-  }
-
-  focus() { this.dispatchEvent(new GlobalEvent('focus')); }
-
-  getAttribute(name) {
-    const attribute = this.getAttributeNode(name);
-    return attribute && attribute.value;
-  }
-
-  getAttributeNode(name) {
-    return attributeNamed(this, qualify(this, name));
-  }
-
-  getAttributeNS(namespace, localName) {
-    const attribute = attributeNS(this, namespace, localName);
-    return attribute && attribute.value;
-  }
-
-  getAttributeNodeNS(namespace, localName) {
-    return attributeNS(this, namespace, localName);
-  }
-
-  getAttributeNames() {
-    const attributes = new NodeList;
-    let next = this[NEXT];
-    while (next.nodeType === ATTRIBUTE_NODE) {
-      attributes.push(next.name);
-      next = next[NEXT];
-    }
-    return attributes;
-  }
-
-  hasAttribute(name) { return !!this.getAttributeNode(name); }
-  hasAttributeNS(namespace, localName) { return !!attributeNS(this, namespace, localName); }
-  hasAttributes() { return this[NEXT].nodeType === ATTRIBUTE_NODE; }
-
-  removeAttribute(name) {
-    const attribute = this.getAttributeNode(name);
-    if (attribute)
-      removeAttribute(this, attribute);
-  }
-
-  removeAttributeNS(namespace, localName) {
-    const attribute = attributeNS(this, namespace, localName);
-    if (attribute)
-      removeAttribute(this, attribute);
-  }
-
-  removeAttributeNode(attribute) {
-    let next = this[NEXT];
-    while (next.nodeType === ATTRIBUTE_NODE) {
-      if (next === attribute) {
-        removeAttribute(this, next);
-        return;
-      }
-      next = next[NEXT];
-    }
-  }
-
-  setAttribute(name, value) {
-    name = qualify(this, validAttributeName($String(name)));
-    const attribute = attributeNamed(this, name);
-    if (attribute)
-      attribute.value = value;
-    else
-      setAttribute(this, new Attr$1(this.ownerDocument, name, value));
-  }
-
-  setAttributeNS(namespace, qualifiedName, value) {
-    qualifiedName = $String(qualifiedName);
-    const {namespace: ns, prefix, localName} = validateAndExtract(namespace, qualifiedName, false);
-    const attribute = attributeNS(this, ns, localName);
-    if (attribute)
-      attribute.value = value;
-    else
-      setAttribute(this, new Attr$1(this.ownerDocument, qualifiedName, value, ns, prefix, localName));
-  }
-
-  setAttributeNode(attribute) {
-    const {ownerElement, namespaceURI, localName} = attribute;
-    if (ownerElement && ownerElement !== this)
-      throw new DOMException('The attribute belongs to another element.', 'InUseAttributeError');
-    const previously = attributeNS(this, namespaceURI, localName);
-    if (previously === attribute)
-      return attribute;
-    if (previously)
-      replaceAttribute(this, previously, attribute);
-    else
-      setAttribute(this, attribute);
-    return previously;
-  }
-
-  setAttributeNodeNS(attribute) { return this.setAttributeNode(attribute); }
-
-  toggleAttribute(name, force) {
-    name = qualify(this, validAttributeName($String(name)));
-    const attribute = attributeNamed(this, name);
-    if (!attribute) {
-      if (force === undefined || force) {
-        setAttribute(this, new Attr$1(this.ownerDocument, name, ''));
-        return true;
-      }
-      return false;
-    }
-    if (force === undefined || !force) {
-      removeAttribute(this, attribute);
-      return false;
-    }
-    return true;
-  }
-  // </attributes>
-
-  // <ShadowDOM>
-  get shadowRoot() {
-    if (shadowRoots.has(this)) {
-      const {mode, shadowRoot} = shadowRoots.get(this);
-      if (mode === 'open')
-        return shadowRoot;
-    }
-    return null;
-  }
-
-  attachShadow(init) {
-    if (shadowRoots.has(this))
-      throw new Error('operation not supported');
-    // TODO: shadowRoot should be likely a specialized class that extends DocumentFragment
-    //       but until DSD is out, I am not sure I should spend time on this.
-    const shadowRoot = new ShadowRoot$1(this);
-    shadowRoots.set(this, {
-      mode: init.mode,
-      shadowRoot
-    });
-    return shadowRoot;
-  }
-  // </ShadowDOM>
-
-  // <selectors>
-  matches(selectors) { return matches(this, selectors); }
-  closest(selectors) {
-    let parentElement = this;
-    const matches = prepareMatch(parentElement, selectors);
-    while (parentElement && !matches(parentElement))
-      parentElement = parentElement.parentElement;
-    return parentElement;
-  }
-  // </selectors>
-
-  // <insertAdjacent>
-  insertAdjacentElement(position, element) {
-    const {parentElement} = this;
-    switch (position) {
-      case 'beforebegin':
-        if (parentElement) {
-          parentElement.insertBefore(element, this);
-          break;
-        }
-        return null;
-      case 'afterbegin':
-        this.insertBefore(element, this.firstChild);
-        break;
-      case 'beforeend':
-        this.insertBefore(element, null);
-        break;
-      case 'afterend':
-        if (parentElement) {
-          parentElement.insertBefore(element, this.nextSibling);
-          break;
-        }
-        return null;
-    }
-    return element;
-  }
-
-  insertAdjacentHTML(position, html) {
-    let context = this;
-    switch (asciiLowercase($String(position))) {
-      case 'beforebegin':
-      case 'afterend': {
-        context = this.parentNode;
-        if (!context || context.nodeType === DOCUMENT_NODE)
-          throw new DOMException('The element has no parent to take the markup.', 'NoModificationAllowedError');
-        break;
-      }
-    }
-    this.insertAdjacentElement(position, parseFragment(adjacentContext(context), html));
-  }
-
-  insertAdjacentText(position, text) {
-    const node = this.ownerDocument.createTextNode(text);
-    this.insertAdjacentElement(position, node);
-  }
-  // </insertAdjacent>
-
-  cloneNode(deep = false) {
-    const {ownerDocument, localName} = this;
-    const addNext = next => {
-      next.parentNode = parentNode;
-      knownAdjacent($next, next);
-      $next = next;
-    };
-    const clone = create(ownerDocument, this, localName);
-    let parentNode = clone, $next = clone;
-    let {[NEXT]: next, [END]: prev} = this;
-    while (next !== prev && (deep || next.nodeType === ATTRIBUTE_NODE)) {
-      switch (next.nodeType) {
-        case NODE_END:
-          knownAdjacent($next, parentNode[END]);
-          $next = parentNode[END];
-          parentNode = parentNode.parentNode;
-          break;
-        case ELEMENT_NODE: {
-          const node = create(ownerDocument, next, next.localName);
-          addNext(node);
-          parentNode = node;
-          break;
-        }
-        case ATTRIBUTE_NODE: {
-          const attr = next.cloneNode(deep);
-          attr.ownerElement = parentNode;
-          addNext(attr);
-          break;
-        }
-        case TEXT_NODE:
-        case COMMENT_NODE:
-        case CDATA_SECTION_NODE:
-          addNext(next.cloneNode(deep));
-          break;
-      }
-      next = next[NEXT];
-    }
-    knownAdjacent($next, clone[END]);
-    return clone;
-  }
-
-  // <custom>
-  toString() {
-    return ignoreCase(this) ? outerHTML(this) : serializeXML(this, false);
-  }
-
-  toJSON() {
-    const json = [];
-    elementAsJSON(this, json);
-    return json;
-  }
-  // </custom>
-
-
-  /* c8 ignore start */
-  getElementsByTagNameNS(_, name) { return this.getElementsByTagName(name); }
-  /* c8 ignore stop */
-};
-
 const classNames = new WeakMap;
 
 const animatedClass = element => ({
@@ -82355,6 +82349,23 @@ let SVGElement$1 = class SVGElement extends Element$1 {
 
   get namespaceURI() {
     return SVG_NAMESPACE;
+  }
+
+  get style() {
+    return this[STYLE] || (this[STYLE] = styleOf(this));
+  }
+};
+
+/**
+ * @implements globalThis.MathMLElement
+ */
+let MathMLElement$1 = class MathMLElement extends Element$1 {
+  get namespaceURI() {
+    return MATHML_NAMESPACE;
+  }
+
+  get style() {
+    return this[STYLE] || (this[STYLE] = styleOf(this));
   }
 };
 
@@ -82406,6 +82417,10 @@ Text.prototype = Text$1.prototype;
 function SVGElement() { illegalConstructor(); }
 setPrototypeOf(SVGElement, SVGElement$1);
 SVGElement.prototype = SVGElement$1.prototype;
+
+function MathMLElement() { illegalConstructor(); }
+setPrototypeOf(MathMLElement, MathMLElement$1);
+MathMLElement.prototype = MathMLElement$1.prototype;
 /* c8 ignore stop */
 
 const Facades = {
@@ -82419,7 +82434,8 @@ const Facades = {
   Node,
   ShadowRoot,
   Text,
-  SVGElement
+  SVGElement,
+  MathMLElement
 };
 
 const Level0 = new WeakMap;
@@ -82477,6 +82493,10 @@ class HTMLElement extends Element$1 {
   }
 
   get namespaceURI() { return HTML_NAMESPACE; }
+
+  get style() {
+    return this[STYLE] || (this[STYLE] = styleOf(this));
+  }
 
   /* c8 ignore start */
 
@@ -86768,6 +86788,8 @@ let Document$1 = class Document extends NonElementParentNode {
     }
     else if (namespace === SVG_NAMESPACE)
       element = new SVGElement$1(this, localName, null);
+    else if (namespace === MATHML_NAMESPACE)
+      element = new MathMLElement$1(this, localName);
     else
       element = new Element$1(this, localName);
     element[NAMESPACE$8] = namespace;
@@ -87087,4 +87109,4 @@ function Document() {
 
 setPrototypeOf(Document, Document$1).prototype = Document$1.prototype;
 
-export { Attr, CDATASection, CharacterData, Comment, CustomEvent, DOMParser, Document, DocumentFragment, DocumentType, Element, GlobalEvent as Event, DOMEventTarget as EventTarget, Facades, HTMLAnchorElement, HTMLAreaElement, HTMLAudioElement, HTMLBRElement, HTMLBaseElement, HTMLBodyElement, HTMLButtonElement, HTMLCanvasElement, HTMLClasses, HTMLDListElement, HTMLDataElement, HTMLDataListElement, HTMLDetailsElement, HTMLDialogElement, HTMLDirectoryElement, HTMLDivElement, HTMLElement, HTMLEmbedElement, HTMLFieldSetElement, HTMLFontElement, HTMLFormElement, HTMLFrameElement, HTMLFrameSetElement, HTMLHRElement, HTMLHeadElement, HTMLHeadingElement, HTMLHtmlElement, HTMLIFrameElement, HTMLImageElement, HTMLInputElement, HTMLLIElement, HTMLLabelElement, HTMLLegendElement, HTMLLinkElement, HTMLMapElement, HTMLMarqueeElement, HTMLMediaElement, HTMLMenuElement, HTMLMetaElement, HTMLMeterElement, HTMLModElement, HTMLOListElement, HTMLObjectElement, HTMLOptGroupElement, HTMLOptionElement, HTMLOutputElement, HTMLParagraphElement, HTMLParamElement, HTMLPictureElement, HTMLPreElement, HTMLProgressElement, HTMLQuoteElement, HTMLScriptElement, HTMLSelectElement, HTMLSlotElement, HTMLSourceElement, HTMLSpanElement, HTMLStyleElement, HTMLTableCaptionElement, HTMLTableCellElement, HTMLTableColElement, HTMLTableElement, HTMLTableRowElement, HTMLTableSectionElement, HTMLTemplateElement, HTMLTextAreaElement, HTMLTimeElement, HTMLTitleElement, HTMLTrackElement, HTMLUListElement, HTMLUnknownElement, HTMLVideoElement, InputEvent, Node, NodeFilter, NodeList, SVGElement, ShadowRoot, Text, illegalConstructor, parseHTML, parseJSON, toJSON };
+export { Attr, CDATASection, CharacterData, Comment, CustomEvent, DOMParser, Document, DocumentFragment, DocumentType, Element, GlobalEvent as Event, DOMEventTarget as EventTarget, Facades, HTMLAnchorElement, HTMLAreaElement, HTMLAudioElement, HTMLBRElement, HTMLBaseElement, HTMLBodyElement, HTMLButtonElement, HTMLCanvasElement, HTMLClasses, HTMLDListElement, HTMLDataElement, HTMLDataListElement, HTMLDetailsElement, HTMLDialogElement, HTMLDirectoryElement, HTMLDivElement, HTMLElement, HTMLEmbedElement, HTMLFieldSetElement, HTMLFontElement, HTMLFormElement, HTMLFrameElement, HTMLFrameSetElement, HTMLHRElement, HTMLHeadElement, HTMLHeadingElement, HTMLHtmlElement, HTMLIFrameElement, HTMLImageElement, HTMLInputElement, HTMLLIElement, HTMLLabelElement, HTMLLegendElement, HTMLLinkElement, HTMLMapElement, HTMLMarqueeElement, HTMLMediaElement, HTMLMenuElement, HTMLMetaElement, HTMLMeterElement, HTMLModElement, HTMLOListElement, HTMLObjectElement, HTMLOptGroupElement, HTMLOptionElement, HTMLOutputElement, HTMLParagraphElement, HTMLParamElement, HTMLPictureElement, HTMLPreElement, HTMLProgressElement, HTMLQuoteElement, HTMLScriptElement, HTMLSelectElement, HTMLSlotElement, HTMLSourceElement, HTMLSpanElement, HTMLStyleElement, HTMLTableCaptionElement, HTMLTableCellElement, HTMLTableColElement, HTMLTableElement, HTMLTableRowElement, HTMLTableSectionElement, HTMLTemplateElement, HTMLTextAreaElement, HTMLTimeElement, HTMLTitleElement, HTMLTrackElement, HTMLUListElement, HTMLUnknownElement, HTMLVideoElement, InputEvent, MathMLElement, Node, NodeFilter, NodeList, SVGElement, ShadowRoot, Text, illegalConstructor, parseHTML, parseJSON, toJSON };

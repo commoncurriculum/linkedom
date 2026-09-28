@@ -9,6 +9,7 @@ import {Node as _Node} from '../interface/node.js';
 import {ShadowRoot as _ShadowRoot} from '../interface/shadow-root.js';
 import {Text as _Text} from '../interface/text.js';
 import {SVGElement as _SVGElement} from '../svg/element.js';
+import {MathMLElement as _MathMLElement} from '../mathml/element.js';
 
 import {setPrototypeOf} from './object.js';
 
@@ -60,6 +61,10 @@ Text.prototype = _Text.prototype;
 export function SVGElement() { illegalConstructor(); }
 setPrototypeOf(SVGElement, _SVGElement);
 SVGElement.prototype = _SVGElement.prototype;
+
+export function MathMLElement() { illegalConstructor(); }
+setPrototypeOf(MathMLElement, _MathMLElement);
+MathMLElement.prototype = _MathMLElement.prototype;
 /* c8 ignore stop */
 
 export const Facades = {
@@ -73,5 +78,6 @@ export const Facades = {
   Node,
   ShadowRoot,
   Text,
-  SVGElement
+  SVGElement,
+  MathMLElement
 };

@@ -1,6 +1,6 @@
 'use strict';
 const {
-  DOCUMENT_NODE, DOCUMENT_FRAGMENT_NODE, DOCUMENT_TYPE_NODE, ELEMENT_NODE, HTML_NAMESPACE, SVG_NAMESPACE
+  DOCUMENT_NODE, DOCUMENT_FRAGMENT_NODE, DOCUMENT_TYPE_NODE, ELEMENT_NODE, HTML_NAMESPACE, MATHML_NAMESPACE, SVG_NAMESPACE
 } = require('../shared/constants.js');
 
 const {
@@ -18,6 +18,7 @@ const {assign, create, defineProperties, setPrototypeOf} = require('../shared/ob
 const {NonElementParentNode} = require('../mixin/non-element-parent-node.js');
 
 const {SVGElement} = require('../svg/element.js');
+const {MathMLElement} = require('../mathml/element.js');
 
 const {Attr} = require('./attr.js');
 const {CDATASection} = require('./cdata-section.js')
@@ -299,6 +300,8 @@ class Document extends NonElementParentNode {
     }
     else if (namespace === SVG_NAMESPACE)
       element = new SVGElement(this, localName, null);
+    else if (namespace === MATHML_NAMESPACE)
+      element = new MathMLElement(this, localName);
     else
       element = new Element(this, localName);
     element[NAMESPACE] = namespace;

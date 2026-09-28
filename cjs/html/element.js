@@ -1,10 +1,11 @@
 'use strict';
 const {HTML_NAMESPACE} = require('../shared/constants.js');
-const {END, UPGRADE} = require('../shared/symbols.js');
+const {END, STYLE, UPGRADE} = require('../shared/symbols.js');
 const {booleanAttribute, stringAttribute} = require('../shared/attributes.js');
 
 const {Event} = require('../interface/event.js');
 const {Element} = require('../interface/element.js');
+const {styleOf} = require('../interface/css-style-declaration.js');
 const {Classes, customElements} = require('../interface/custom-element-registry.js');
 
 const Level0 = new WeakMap;
@@ -62,6 +63,10 @@ class HTMLElement extends Element {
   }
 
   get namespaceURI() { return HTML_NAMESPACE; }
+
+  get style() {
+    return this[STYLE] || (this[STYLE] = styleOf(this));
+  }
 
   /* c8 ignore start */
 

@@ -53,7 +53,6 @@ import {ParentNode} from '../mixin/parent-node.js';
 import {DOMStringMap} from '../dom/string-map.js';
 import {DOMTokenList} from '../dom/token-list.js';
 
-import {styleOf} from './css-style-declaration.js';
 import {Event} from './event.js';
 import {NamedNodeMap} from './named-node-map.js';
 import {ShadowRoot} from './shadow-root.js';
@@ -185,12 +184,6 @@ export class Element extends ParentNode {
 
   get nonce() { return stringAttribute.get(this, 'nonce'); }
   set nonce(value) { stringAttribute.set(this, 'nonce', value); }
-
-  get style() {
-    return this[STYLE] || (
-      this[STYLE] = styleOf(this)
-    );
-  }
 
   get tabIndex() { return numericAttribute.get(this, 'tabindex') || -1; }
   set tabIndex(value) { numericAttribute.set(this, 'tabindex', value); }

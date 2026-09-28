@@ -1,6 +1,8 @@
 'use strict';
 const {SVG_NAMESPACE} = require('../shared/constants.js');
+const {STYLE} = require('../shared/symbols.js');
 const {Element} = require('../interface/element.js');
+const {styleOf} = require('../interface/css-style-declaration.js');
 
 const classNames = new WeakMap;
 
@@ -33,6 +35,10 @@ class SVGElement extends Element {
 
   get namespaceURI() {
     return SVG_NAMESPACE;
+  }
+
+  get style() {
+    return this[STYLE] || (this[STYLE] = styleOf(this));
   }
 }
 exports.SVGElement = SVGElement

@@ -28,7 +28,6 @@ export class Element extends ParentNode implements globalThis.Element {
     };
     set nonce(value: any);
     get nonce(): any;
-    get style(): any;
     set tabIndex(value: number);
     get tabIndex(): number;
     set slot(value: any);

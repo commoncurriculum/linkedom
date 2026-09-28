@@ -1,9 +1,10 @@
 import {HTML_NAMESPACE} from '../shared/constants.js';
-import {END, UPGRADE} from '../shared/symbols.js';
+import {END, STYLE, UPGRADE} from '../shared/symbols.js';
 import {booleanAttribute, stringAttribute} from '../shared/attributes.js';
 
 import {Event} from '../interface/event.js';
 import {Element} from '../interface/element.js';
+import {styleOf} from '../interface/css-style-declaration.js';
 import {Classes, customElements} from '../interface/custom-element-registry.js';
 
 const Level0 = new WeakMap;
@@ -61,6 +62,10 @@ export class HTMLElement extends Element {
   }
 
   get namespaceURI() { return HTML_NAMESPACE; }
+
+  get style() {
+    return this[STYLE] || (this[STYLE] = styleOf(this));
+  }
 
   /* c8 ignore start */
 

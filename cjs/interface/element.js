@@ -51,7 +51,6 @@ const {ParentNode} = require('../mixin/parent-node.js');
 const {DOMStringMap} = require('../dom/string-map.js');
 const {DOMTokenList} = require('../dom/token-list.js');
 
-const {styleOf} = require('./css-style-declaration.js');
 const {Event} = require('./event.js');
 const {NamedNodeMap} = require('./named-node-map.js');
 const {ShadowRoot} = require('./shadow-root.js');
@@ -183,12 +182,6 @@ class Element extends ParentNode {
 
   get nonce() { return stringAttribute.get(this, 'nonce'); }
   set nonce(value) { stringAttribute.set(this, 'nonce', value); }
-
-  get style() {
-    return this[STYLE] || (
-      this[STYLE] = styleOf(this)
-    );
-  }
 
   get tabIndex() { return numericAttribute.get(this, 'tabindex') || -1; }
   set tabIndex(value) { numericAttribute.set(this, 'tabindex', value); }

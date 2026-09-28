@@ -1,5 +1,7 @@
 import {SVG_NAMESPACE} from '../shared/constants.js';
+import {STYLE} from '../shared/symbols.js';
 import {Element} from '../interface/element.js';
+import {styleOf} from '../interface/css-style-declaration.js';
 
 const classNames = new WeakMap;
 
@@ -32,5 +34,9 @@ export class SVGElement extends Element {
 
   get namespaceURI() {
     return SVG_NAMESPACE;
+  }
+
+  get style() {
+    return this[STYLE] || (this[STYLE] = styleOf(this));
   }
 }

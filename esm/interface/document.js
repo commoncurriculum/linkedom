@@ -1,6 +1,6 @@
 import {
   DOCUMENT_NODE, DOCUMENT_FRAGMENT_NODE, DOCUMENT_TYPE_NODE, ELEMENT_NODE,
-  HTML_NAMESPACE, SVG_NAMESPACE
+  HTML_NAMESPACE, MATHML_NAMESPACE, SVG_NAMESPACE
 } from '../shared/constants.js';
 
 import {
@@ -19,6 +19,7 @@ import {assign, create, defineProperties, setPrototypeOf} from '../shared/object
 import {NonElementParentNode} from '../mixin/non-element-parent-node.js';
 
 import {SVGElement} from '../svg/element.js';
+import {MathMLElement} from '../mathml/element.js';
 
 import {Attr} from './attr.js';
 import {CDATASection} from './cdata-section.js'
@@ -300,6 +301,8 @@ export class Document extends NonElementParentNode {
     }
     else if (namespace === SVG_NAMESPACE)
       element = new SVGElement(this, localName, null);
+    else if (namespace === MATHML_NAMESPACE)
+      element = new MathMLElement(this, localName);
     else
       element = new Element(this, localName);
     element[NAMESPACE] = namespace;
