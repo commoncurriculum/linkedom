@@ -7,6 +7,8 @@ export class HTMLSelectElement extends HTMLElement implements globalThis.HTMLSel
     get disabled(): any;
     set name(value: any);
     get name(): any;
+    set multiple(value: any);
+    get multiple(): any;
     get value(): any;
 }
 import { HTMLElement } from './element.js';

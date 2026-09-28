@@ -60,6 +60,17 @@ const globalExports = assign(
 
 const window = new WeakMap;
 
+// The window's event target, which ends every event path through the document.
+const windowTarget = document => {
+  if (!document[EVENT_TARGET]) {
+    const et = document[EVENT_TARGET] = new EventTarget;
+    et.dispatchEvent = et.dispatchEvent.bind(et);
+    et.addEventListener = et.addEventListener.bind(et);
+    et.removeEventListener = et.removeEventListener.bind(et);
+  }
+  return document[EVENT_TARGET];
+};
+
 /**
  * @implements globalThis.Document
  */
@@ -88,7 +99,7 @@ class Document extends NonElementParentNode {
             case 'addEventListener':
             case 'removeEventListener':
             case 'dispatchEvent':
-              this[EVENT_TARGET][name] = value;
+              windowTarget(this)[name] = value;
               break;
             default:
               target[name] = value;
@@ -101,13 +112,7 @@ class Document extends NonElementParentNode {
             case 'addEventListener':
             case 'removeEventListener':
             case 'dispatchEvent':
-              if (!this[EVENT_TARGET]) {
-                const et = this[EVENT_TARGET] = new EventTarget;
-                et.dispatchEvent = et.dispatchEvent.bind(et);
-                et.addEventListener = et.addEventListener.bind(et);
-                et.removeEventListener = et.removeEventListener.bind(et);
-              }
-              return this[EVENT_TARGET][name];
+              return windowTarget(this)[name];
             case 'document':
               return this;
             /* c8 ignore start */
@@ -171,7 +176,7 @@ class Document extends NonElementParentNode {
    * @protected
    */
    _getParent() {
-    return this[EVENT_TARGET];
+    return windowTarget(this);
   }
 
   createAttribute(name) {

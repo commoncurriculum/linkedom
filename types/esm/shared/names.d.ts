@@ -7,3 +7,4 @@ export function validateAndExtract(namespace: string | null, qualifiedName: stri
 };
 export function asciiUppercase(name: any): any;
 export function asciiLowercase(name: any): any;
+export function isValidCustomElementName(name: any): boolean;

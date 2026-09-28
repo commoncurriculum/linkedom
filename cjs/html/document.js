@@ -2,7 +2,7 @@
 const {ELEMENT_NODE, HTML_NAMESPACE} = require('../shared/constants.js');
 const {CREATE_ELEMENT, CUSTOM_ELEMENTS, END, NEXT} = require('../shared/symbols.js');
 const {htmlClasses} = require('../shared/register-html-class.js');
-const {asciiLowercase, validElementName} = require('../shared/names.js');
+const {asciiLowercase, isValidCustomElementName, validElementName} = require('../shared/names.js');
 const {innerHTML} = require('../shared/serialize-html.js');
 
 const {Document} = require('../interface/document.js');
@@ -50,7 +50,7 @@ const createHTMLElement = (ownerDocument, builtin, localName, options) => {
     }
   }
   const Class = htmlClasses.get(localName) || (
-    localName.includes('-') || htmlElements.has(localName) ? HTMLElement : HTMLUnknownElement
+    isValidCustomElementName(localName) || htmlElements.has(localName) ? HTMLElement : HTMLUnknownElement
   );
   return new Class(ownerDocument, localName);
 };

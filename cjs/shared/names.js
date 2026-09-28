@@ -5,7 +5,7 @@
 const {XML_NAMESPACE, XMLNS_NAMESPACE} = require('./constants.js');
 
 const validElementLocalName =
-  /^(?:[A-Za-z][^\0\t\n\f\r />]*|[:_\u0080-\u{10FFFF}][A-Za-z0-9-.:_\u0080-\u{10FFFF}]*)$/u;
+  /^(?:[A-Za-z][^\0\t\n\f\r />]*|[:_\u{80}-\u{10FFFF}][A-Za-z0-9-.:_\u{80}-\u{10FFFF}]*)$/u;
 const invalidNamespacePrefix = /[\0\t\n\f\r />]/u;
 const invalidAttributeLocalName = /[\0\t\n\f\r /=>]/u;
 
@@ -72,3 +72,18 @@ const asciiUppercase = name => name.replace(asciiLetters, upper);
 exports.asciiUppercase = asciiUppercase;
 const asciiLowercase = name => name.replace(asciiCapitals, lower);
 exports.asciiLowercase = asciiLowercase;
+
+// https://html.spec.whatwg.org/multipage/custom-elements.html#valid-custom-element-name
+const potentialCustomElementName =
+  /^[a-z][-.0-9_a-z\xB7\xC0-\xD6\xD8-\xF6\xF8-\u{37D}\u{37F}-\u{1FFF}\u{200C}-\u{200D}\u{203F}\u{2040}\u{2070}-\u{218F}\u{2C00}-\u{2FEF}\u{3001}-\u{D7FF}\u{F900}-\u{FDCF}\u{FDF0}-\u{FFFD}\u{10000}-\u{EFFFF}]*$/u;
+
+const reservedCustomElementNames = new Set([
+  'annotation-xml', 'color-profile', 'font-face', 'font-face-src',
+  'font-face-uri', 'font-face-format', 'font-face-name', 'missing-glyph'
+]);
+
+const isValidCustomElementName = name =>
+  name.includes('-') &&
+  potentialCustomElementName.test(name) &&
+  !reservedCustomElementNames.has(name);
+exports.isValidCustomElementName = isValidCustomElementName;
