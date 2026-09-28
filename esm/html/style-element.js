@@ -1,16 +1,15 @@
 import {parse} from 'cssom';
 
-import {registerHTMLClass} from '../shared/register-html-class.js';
 import {SHEET} from '../shared/symbols.js';
 
-import {TextElement} from './text-element.js';
+import {HTMLElement} from './element.js';
 
 const tagName = 'style';
 
 /**
  * @implements globalThis.HTMLStyleElement
  */
-class HTMLStyleElement extends TextElement {
+class HTMLStyleElement extends HTMLElement {
   constructor(ownerDocument, localName = tagName) {
     super(ownerDocument, localName);
     this[SHEET] = null;
@@ -46,7 +45,5 @@ class HTMLStyleElement extends TextElement {
     this[SHEET] = null;
   }
 }
-
-registerHTMLClass(tagName, HTMLStyleElement);
 
 export {HTMLStyleElement};

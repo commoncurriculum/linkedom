@@ -1,4 +1,3 @@
-import {registerHTMLClass} from '../shared/register-html-class.js';
 import {booleanAttribute} from '../shared/attributes.js';
 
 import {HTMLElement} from './element.js';
@@ -24,7 +23,5 @@ class HTMLButtonElement extends HTMLElement {
   set type(value) { this.setAttribute('type', value); }
   /* c8 ignore stop */
 }
-
-registerHTMLClass(tagName, HTMLButtonElement);
 
 export {HTMLButtonElement};

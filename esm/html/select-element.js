@@ -1,4 +1,3 @@
-import {registerHTMLClass} from '../shared/register-html-class.js';
 import {booleanAttribute} from '../shared/attributes.js';
 
 import {HTMLElement} from './element.js';
@@ -47,8 +46,6 @@ class HTMLSelectElement extends HTMLElement {
     return option ? option.value : '';
   }
 }
-
-registerHTMLClass(tagName, HTMLSelectElement);
 
 export {HTMLSelectElement};
 

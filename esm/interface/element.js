@@ -18,9 +18,9 @@ import {
 } from '../shared/attributes.js';
 
 import {
-  CLASS_LIST, CONTENT, DATASET, STYLE,
+  CLASS_LIST, CONTENT, CREATE_ELEMENT, CUSTOM_ELEMENTS, DATASET, STYLE,
   END, NEXT, PREV,
-  MIME, NAMESPACE, PREFIX
+  NAMESPACE, PREFIX
 } from '../shared/symbols.js';
 
 import {
@@ -67,14 +67,10 @@ const attributesHandler = {
   }
 };
 
-const create = (ownerDocument, element, localName, deep)  => {
-  const clone = element.namespaceURI === HTML_NAMESPACE && ignoreCase(element) && localName === asciiLowercase(localName) ?
-    ownerDocument.createElement(localName) :
-    new element.constructor(ownerDocument, localName);
-  if (NAMESPACE in element)
-    clone[NAMESPACE] = element[NAMESPACE];
-  if (PREFIX in element)
-    clone[PREFIX] = element[PREFIX];
+// https://dom.spec.whatwg.org/#concept-node-clone
+const create = (ownerDocument, element, deep)  => {
+  const is = ownerDocument[CUSTOM_ELEMENTS].active ? element.getAttributeNS(null, 'is') : null;
+  const clone = ownerDocument[CREATE_ELEMENT](element.namespaceURI, element.localName, element.prefix, is);
   if (deep && element[CONTENT])
     clone[CONTENT] = element[CONTENT].cloneNode(true);
   return clone;
@@ -126,12 +122,7 @@ export class Element extends ParentNode {
   get parentElement() { return parentElement(this); }
   get previousSibling() { return previousSibling(this); }
   get nextSibling() { return nextSibling(this); }
-  get namespaceURI() {
-    const {[NAMESPACE]: namespace} = this;
-    if (namespace !== undefined)
-      return namespace;
-    return this.ownerDocument[MIME].ignoreCase ? HTML_NAMESPACE : null;
-  }
+  get namespaceURI() { return this[NAMESPACE]; }
   get prefix() { return this[PREFIX] || null; }
 
   get previousElementSibling() { return previousElementSibling(this); }
@@ -455,13 +446,13 @@ export class Element extends ParentNode {
   // </insertAdjacent>
 
   cloneNode(deep = false) {
-    const {ownerDocument, localName} = this;
+    const {ownerDocument} = this;
     const addNext = next => {
       next.parentNode = parentNode;
       knownAdjacent($next, next);
       $next = next;
     };
-    const clone = create(ownerDocument, this, localName, deep);
+    const clone = create(ownerDocument, this, deep);
     let parentNode = clone, $next = clone;
     let {[NEXT]: next, [END]: prev} = this;
     while (next !== prev && (deep || next.nodeType === ATTRIBUTE_NODE)) {
@@ -472,7 +463,7 @@ export class Element extends ParentNode {
           parentNode = parentNode.parentNode;
           break;
         case ELEMENT_NODE: {
-          const node = create(ownerDocument, next, next.localName, true);
+          const node = create(ownerDocument, next, true);
           addNext(node);
           parentNode = node;
           break;

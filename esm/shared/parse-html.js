@@ -40,18 +40,9 @@ class Adapter {
   createTextNode(data) { return this.document.createTextNode(data); }
 
   createElement(localName, namespace, attrs) {
-    const {document, active} = this;
-    let element = null;
-    if (active && namespace === HTML_NAMESPACE) {
-      const {registry} = document[CUSTOM_ELEMENTS];
-      const is = localName.includes('-') ? localName : (attrs.find(({name}) => name === 'is')?.value || '');
-      if (is && registry.has(is)) {
-        const {Class} = registry.get(is);
-        element = new Class;
-        attrs = attrs.filter(({name}) => name !== 'is');
-      }
-    }
-    element = element || document[CREATE_ELEMENT](namespace, localName);
+    const is = this.active && namespace === HTML_NAMESPACE ?
+      attrs.find(({name}) => name === 'is')?.value ?? null : null;
+    const element = this.document[CREATE_ELEMENT](namespace, localName, null, is);
     const end = element[END];
     for (const attr of attrs)
       this.addAttribute(element, attr, end[PREV]);

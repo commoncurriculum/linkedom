@@ -1,6 +1,6 @@
 import {
   DOCUMENT_NODE, DOCUMENT_FRAGMENT_NODE, DOCUMENT_TYPE_NODE, ELEMENT_NODE,
-  HTML_NAMESPACE, MATHML_NAMESPACE, SVG_NAMESPACE
+  HTML_NAMESPACE
 } from '../shared/constants.js';
 
 import {
@@ -9,8 +9,7 @@ import {
 } from '../shared/symbols.js';
 
 import {Facades, illegalConstructor} from '../shared/facades.js';
-import {HTMLClasses} from '../shared/html-classes.js';
-import {htmlClasses} from '../shared/register-html-class.js';
+import {HTMLClasses, elementInterface} from '../shared/html-classes.js';
 import {asciiLowercase, validAttributeName, validElementName, validateAndExtract} from '../shared/names.js';
 import {Mime} from '../shared/mime.js';
 import {knownSiblings} from '../shared/utils.js';
@@ -20,13 +19,10 @@ import {serializeXML} from '../shared/serialize-xml.js';
 
 import {NonElementParentNode} from '../mixin/non-element-parent-node.js';
 
-import {SVGElement} from '../svg/element.js';
-import {MathMLElement} from '../mathml/element.js';
-
 import {Attr} from './attr.js';
 import {CDATASection} from './cdata-section.js'
 import {Comment} from './comment.js';
-import {CustomElementRegistry} from './custom-element-registry.js';
+import {CustomElementRegistry, constructCustomElement} from './custom-element-registry.js';
 import {CustomEvent} from './custom-event.js';
 import {DocumentFragment} from './document-fragment.js';
 import {DocumentType} from './document-type.js';
@@ -190,7 +186,22 @@ export class Document extends NonElementParentNode {
   createComment(textContent) { return new Comment(this, textContent); }
   createDocumentFragment() { return new DocumentFragment(this); }
   createDocumentType(name, publicId, systemId) { return new DocumentType(this, name, publicId, systemId); }
-  createElement(localName) { return new Element(this, validElementName(String(localName))); }
+
+  createElement(localName, options) {
+    localName = validElementName(String(localName));
+    const isHTML = this[MIME].ignoreCase;
+    const is = isHTML && options && options.is || null;
+    const element = this[CREATE_ELEMENT](
+      isHTML ? HTML_NAMESPACE : null,
+      isHTML ? asciiLowercase(localName) : localName,
+      null,
+      is
+    );
+    if (is)
+      element.setAttribute('is', is);
+    return element;
+  }
+
   createRange() {
     const range = new Range;
     range.commonAncestorContainer = this;
@@ -296,27 +307,23 @@ export class Document extends NonElementParentNode {
 
   createElementNS(namespace, qualifiedName, options) {
     const {namespace: ns, prefix, localName} = validateAndExtract(namespace, String(qualifiedName), true);
-    const element = this[CREATE_ELEMENT](ns, localName, prefix);
-    if (ns === HTML_NAMESPACE && options && options.is)
-      element.setAttribute('is', options.is);
+    const is = ns === HTML_NAMESPACE && options && options.is || null;
+    const element = this[CREATE_ELEMENT](ns, localName, prefix, is);
+    if (is)
+      element.setAttribute('is', is);
     return element;
   }
 
-  [CREATE_ELEMENT](namespace, localName, prefix = null) {
-    let element;
-    if (namespace === HTML_NAMESPACE) {
-      const Class = localName === asciiLowercase(localName) && htmlClasses.get(localName);
-      element = new (Class || HTMLClasses.HTMLElement)(this, localName);
-    }
-    else if (namespace === SVG_NAMESPACE)
-      element = new SVGElement(this, localName);
-    else if (namespace === MATHML_NAMESPACE)
-      element = new MathMLElement(this, localName);
-    else
-      element = new Element(this, localName);
-    element[NAMESPACE] = namespace;
+  // https://dom.spec.whatwg.org/#concept-create-element
+  [CREATE_ELEMENT](namespace, localName, prefix = null, is = null) {
+    const Class = elementInterface(namespace, localName);
+    const element = new Class(this, localName);
+    if (Class === Element)
+      element[NAMESPACE] = namespace;
     if (prefix)
       element[PREFIX] = prefix;
+    if (namespace === HTML_NAMESPACE && this[CUSTOM_ELEMENTS].active)
+      constructCustomElement(this, element, is);
     return element;
   }
 }

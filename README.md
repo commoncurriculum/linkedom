@@ -15,6 +15,8 @@ This is Common Curriculum's fork, which keeps linkedom's linked list and speed b
 
 Where it differs from jsdom 30, it follows the standard or the browsers: duplicate `<html>` and `<body>` attributes don't overwrite, `<search>` is an `HTMLElement`, MathML elements have `style`, and a `<noscript>` parses its content as elements wherever it is.
 
+Where it differs from the standard: every SVG element is an `SVGElement`, where the SVG standard gives most of them an interface of their own, such as `SVGSVGElement` or `SVGRectElement`.
+
 ### This is not a crawler!
 
 LinkeDOM is a [triple-linked list](#data-structure) based DOM-like namespace, for DOM-less environments, with the following goals:

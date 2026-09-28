@@ -1,4 +1,3 @@
-import {registerHTMLClass} from '../shared/register-html-class.js';
 import {stringAttribute} from '../shared/attributes.js';
 
 import {HTMLElement} from './element.js';
@@ -27,7 +26,5 @@ class HTMLSourceElement extends HTMLElement {
   set type(value) { stringAttribute.set(this, 'type', value); }
   /* c8 ignore stop */
 }
-
-registerHTMLClass(tagName, HTMLSourceElement);
 
 export {HTMLSourceElement};

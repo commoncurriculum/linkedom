@@ -1,7 +1,5 @@
 import {CONTENT} from '../shared/symbols.js';
 
-import {registerHTMLClass} from '../shared/register-html-class.js';
-
 import {HTMLElement} from './element.js';
 
 const tagName = 'template';
@@ -19,7 +17,5 @@ class HTMLTemplateElement extends HTMLElement {
     return this[CONTENT];
   }
 }
-
-registerHTMLClass(tagName, HTMLTemplateElement);
 
 export {HTMLTemplateElement};

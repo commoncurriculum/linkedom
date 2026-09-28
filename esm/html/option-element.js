@@ -1,6 +1,5 @@
 import {HTMLElement} from './element.js';
 import {booleanAttribute} from '../shared/attributes.js';
-import {registerHTMLClass} from '../shared/register-html-class.js';
 
 const tagName = 'option';
 
@@ -52,7 +51,5 @@ class HTMLOptionElement extends HTMLElement {
     }
   }
 }
-
-registerHTMLClass(tagName, HTMLOptionElement);
 
 export {HTMLOptionElement};

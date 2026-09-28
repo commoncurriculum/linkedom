@@ -1,24 +1,8 @@
 import {ELEMENT_NODE, HTML_NAMESPACE} from '../shared/constants.js';
-import {CREATE_ELEMENT, CUSTOM_ELEMENTS, END, NEXT} from '../shared/symbols.js';
-import {htmlClasses} from '../shared/register-html-class.js';
-import {asciiLowercase, isValidCustomElementName, validElementName} from '../shared/names.js';
+import {END, NEXT} from '../shared/symbols.js';
 
 import {Document} from '../interface/document.js';
 import {NodeList} from '../interface/node-list.js';
-import {customElements} from '../interface/custom-element-registry.js';
-
-import {HTMLElement} from './element.js';
-import {HTMLUnknownElement} from './unknown-element.js';
-
-// https://html.spec.whatwg.org/multipage/indices.html#element-interfaces
-const htmlElements = new Set([
-  'abbr', 'acronym', 'address', 'article', 'aside', 'b', 'basefont', 'bdi',
-  'bdo', 'big', 'center', 'cite', 'code', 'dd', 'dfn', 'dt', 'em', 'figcaption',
-  'figure', 'footer', 'header', 'hgroup', 'i', 'kbd', 'main', 'mark', 'nav',
-  'nobr', 'noembed', 'noframes', 'noscript', 'plaintext', 'rb', 'rp', 'rt',
-  'rtc', 'ruby', 's', 'samp', 'search', 'section', 'small', 'strike', 'strong',
-  'sub', 'summary', 'sup', 'tt', 'u', 'var', 'wbr'
-]);
 
 const asciiWhitespace = /[\t\n\f\r ]+/g;
 
@@ -32,38 +16,11 @@ const htmlChild = ({documentElement}, matches) => {
   return null;
 };
 
-export const createHTMLElement = (ownerDocument, builtin, localName, options) => {
-  if (!builtin && htmlClasses.has(localName)) {
-    const Class = htmlClasses.get(localName);
-    return new Class(ownerDocument, localName);
-  }
-  const {[CUSTOM_ELEMENTS]: {active, registry}} = ownerDocument;
-  if (active) {
-    const ce = builtin ? options.is : localName;
-    if (registry.has(ce)) {
-      const {Class} = registry.get(ce);
-      const element = new Class(ownerDocument, localName);
-      customElements.set(element, {connected: false});
-      return element;
-    }
-  }
-  const Class = htmlClasses.get(localName) || (
-    isValidCustomElementName(localName) || htmlElements.has(localName) ? HTMLElement : HTMLUnknownElement
-  );
-  return new Class(ownerDocument, localName);
-};
-
 /**
  * @implements globalThis.HTMLDocument
  */
 export class HTMLDocument extends Document {
   constructor() { super('text/html'); }
-
-  [CREATE_ELEMENT](namespace, localName, prefix = null) {
-    return namespace === HTML_NAMESPACE && !prefix ?
-      createHTMLElement(this, false, localName) :
-      super[CREATE_ELEMENT](namespace, localName, prefix);
-  }
 
   get all() {
     const nodeList = new NodeList;
@@ -110,14 +67,5 @@ export class HTMLDocument extends Document {
       title = head.appendChild(this.createElement('title'));
     }
     title.textContent = textContent;
-  }
-
-  createElement(localName, options) {
-    localName = asciiLowercase(validElementName(String(localName)));
-    const builtin = !!(options && options.is);
-    const element = createHTMLElement(this, builtin, localName, options);
-    if (builtin)
-      element.setAttribute('is', options.is);
-    return element;
   }
 }

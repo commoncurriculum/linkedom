@@ -1,14 +1,13 @@
-import {registerHTMLClass} from '../shared/register-html-class.js';
 import {booleanAttribute} from '../shared/attributes.js';
 
-import {TextElement} from './text-element.js';
+import {HTMLElement} from './element.js';
 
 const tagName = 'textarea';
 
 /**
  * @implements globalThis.HTMLTextAreaElement
  */
-class HTMLTextAreaElement extends TextElement {
+class HTMLTextAreaElement extends HTMLElement {
   constructor(ownerDocument, localName = tagName) {
     super(ownerDocument, localName);
   }
@@ -30,7 +29,5 @@ class HTMLTextAreaElement extends TextElement {
   set value(content) { this.textContent = content; }
   /* c8 ignore stop */
 }
-
-registerHTMLClass(tagName, HTMLTextAreaElement);
 
 export {HTMLTextAreaElement};

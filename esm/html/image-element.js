@@ -1,4 +1,3 @@
-import {registerHTMLClass} from '../shared/register-html-class.js';
 import {numericAttribute, stringAttribute} from '../shared/attributes.js';
 
 import {HTMLElement} from './element.js';
@@ -36,7 +35,5 @@ class HTMLImageElement extends HTMLElement {
   set height(value) { numericAttribute.set(this, 'height', value); }
   /* c8 ignore stop */
 }
-
-registerHTMLClass(tagName, HTMLImageElement);
 
 export {HTMLImageElement};

@@ -1,4 +1,3 @@
-import {registerHTMLClass} from '../shared/register-html-class.js';
 import {stringAttribute} from '../shared/attributes.js';
 import {hyperlinkHref} from '../shared/url.js';
 
@@ -32,7 +31,5 @@ class HTMLAnchorElement extends HTMLElement {
   /* c8 ignore stop */
 
 }
-
-registerHTMLClass(tagName, HTMLAnchorElement);
 
 export {HTMLAnchorElement};

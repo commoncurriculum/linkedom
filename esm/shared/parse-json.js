@@ -7,12 +7,13 @@ import {
   COMMENT_NODE,
   DOCUMENT_NODE,
   DOCUMENT_TYPE_NODE,
-  DOCUMENT_FRAGMENT_NODE
+  DOCUMENT_FRAGMENT_NODE,
+  HTML_NAMESPACE,
+  SVG_NAMESPACE
 } from './constants.js';
 
-import {END, PREV} from './symbols.js';
+import {CREATE_ELEMENT, END, PREV} from './symbols.js';
 
-import {htmlClasses} from './register-html-class.js';
 import {knownBoundaries, knownSiblings} from './utils.js';
 
 import {Attr} from '../interface/attr.js';
@@ -22,22 +23,12 @@ import {DocumentType} from '../interface/document-type.js';
 import {Text} from '../interface/text.js';
 
 import {HTMLDocument} from '../html/document.js';
-import {HTMLElement} from '../html/element.js';
-import {SVGElement} from '../svg/element.js';
 
 const {parse} = JSON;
 
 const append = (parentNode, node, end) => {
   node.parentNode = parentNode;
   knownSiblings(end[PREV], node, end);
-};
-
-const createHTMLElement = (ownerDocument, localName) => {
-  if (htmlClasses.has(localName)) {
-    const Class = htmlClasses.get(localName);
-    return new Class(ownerDocument, localName);
-  }
-  return new HTMLElement(ownerDocument, localName);
 };
 
 /**
@@ -61,9 +52,7 @@ export const parseJSON = value => {
       case ELEMENT_NODE: {
         const localName = array[i++];
         const isSVG = svg || localName === 'svg' || localName === 'SVG';
-        const element = isSVG ?
-                          new SVGElement(document, localName) :
-                          createHTMLElement(document, localName);
+        const element = document[CREATE_ELEMENT](isSVG ? SVG_NAMESPACE : HTML_NAMESPACE, localName);
         knownBoundaries(end[PREV], element, end);
         element.parentNode = parentNode;
         parentNode = element;

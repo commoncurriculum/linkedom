@@ -1,6 +1,5 @@
 import {IMAGE} from '../shared/symbols.js';
 
-import {registerHTMLClass} from '../shared/register-html-class.js';
 import {numericAttribute} from '../shared/attributes.js';
 
 import Canvas from '../../commonjs/canvas.cjs';
@@ -46,7 +45,5 @@ class HTMLCanvasElement extends HTMLElement {
     return this[IMAGE].toDataURL(...args);
   }
 }
-
-registerHTMLClass(tagName, HTMLCanvasElement);
 
 export {HTMLCanvasElement};

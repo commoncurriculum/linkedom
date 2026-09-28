@@ -1,14 +1,13 @@
 import { booleanAttribute, stringAttribute } from '../shared/attributes.js';
-import { registerHTMLClass } from '../shared/register-html-class.js';
 
-import { TextElement } from './text-element.js';
+import { HTMLElement } from './element.js';
 
 const tagName = 'script';
 
 /**
  * @implements globalThis.HTMLScriptElement
  */
-class HTMLScriptElement extends TextElement {
+class HTMLScriptElement extends HTMLElement {
   constructor(ownerDocument, localName = tagName) {
     super(ownerDocument, localName);
   }
@@ -73,7 +72,5 @@ class HTMLScriptElement extends TextElement {
   get text() { return this.textContent; }
   set text(content) { this.textContent = content; }
 }
-
-registerHTMLClass(tagName, HTMLScriptElement);
 
 export { HTMLScriptElement };

@@ -37,13 +37,13 @@ export const MIME = Symbol('mime');
 // used in Document to attach once MutationObserver
 export const MUTATION_OBSERVER = Symbol('MutationObserver');
 
-// used in Document to create parsed elements without validating their names
+// used in Document to create elements from names already validated
 export const CREATE_ELEMENT = Symbol('createElement');
 
 // used in Document for the quirks mode its parser chose
 export const MODE = Symbol('mode');
 
-// used in Element for a namespace other than its class's default
+// used in Element for the namespace of an element whose class implies none
 export const NAMESPACE = Symbol('namespace');
 
 // used in Element for a namespace prefix

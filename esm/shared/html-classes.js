@@ -69,58 +69,114 @@ import {HTMLMarqueeElement} from '../html/marquee-element.js';
 import {HTMLTableColElement} from '../html/table-col-element.js';
 import {HTMLTableSectionElement} from '../html/table-section-element.js';
 import {HTMLDialogElement} from '../html/dialog-element.js';
-import {registerHTMLClass} from './register-html-class.js';
+
+import {Element} from '../interface/element.js';
+import {SVGElement} from '../svg/element.js';
+import {MathMLElement} from '../mathml/element.js';
+
+import {HTML_NAMESPACE, MATHML_NAMESPACE, SVG_NAMESPACE} from './constants.js';
+import {isValidCustomElementName} from './names.js';
 
 // https://html.spec.whatwg.org/multipage/indices.html#element-interfaces
-registerHTMLClass('area', HTMLAreaElement);
-registerHTMLClass('audio', HTMLAudioElement);
-registerHTMLClass('base', HTMLBaseElement);
-registerHTMLClass('body', HTMLBodyElement);
-registerHTMLClass('br', HTMLBRElement);
-registerHTMLClass('caption', HTMLTableCaptionElement);
-registerHTMLClass(['col', 'colgroup'], HTMLTableColElement);
-registerHTMLClass('data', HTMLDataElement);
-registerHTMLClass('datalist', HTMLDataListElement);
-registerHTMLClass(['del', 'ins'], HTMLModElement);
-registerHTMLClass('details', HTMLDetailsElement);
-registerHTMLClass('dialog', HTMLDialogElement);
-registerHTMLClass('dir', HTMLDirectoryElement);
-registerHTMLClass('div', HTMLDivElement);
-registerHTMLClass('dl', HTMLDListElement);
-registerHTMLClass('embed', HTMLEmbedElement);
-registerHTMLClass('fieldset', HTMLFieldSetElement);
-registerHTMLClass('font', HTMLFontElement);
-registerHTMLClass('form', HTMLFormElement);
-registerHTMLClass('frame', HTMLFrameElement);
-registerHTMLClass('frameset', HTMLFrameSetElement);
-registerHTMLClass('head', HTMLHeadElement);
-registerHTMLClass('hr', HTMLHRElement);
-registerHTMLClass('html', HTMLHtmlElement);
-registerHTMLClass('label', HTMLLabelElement);
-registerHTMLClass('legend', HTMLLegendElement);
-registerHTMLClass('li', HTMLLIElement);
-registerHTMLClass('map', HTMLMapElement);
-registerHTMLClass('marquee', HTMLMarqueeElement);
-registerHTMLClass('menu', HTMLMenuElement);
-registerHTMLClass('meter', HTMLMeterElement);
-registerHTMLClass('object', HTMLObjectElement);
-registerHTMLClass('ol', HTMLOListElement);
-registerHTMLClass('optgroup', HTMLOptGroupElement);
-registerHTMLClass('output', HTMLOutputElement);
-registerHTMLClass('p', HTMLParagraphElement);
-registerHTMLClass('param', HTMLParamElement);
-registerHTMLClass('picture', HTMLPictureElement);
-registerHTMLClass(['pre', 'listing', 'xmp'], HTMLPreElement);
-registerHTMLClass('progress', HTMLProgressElement);
-registerHTMLClass(['blockquote', 'q'], HTMLQuoteElement);
-registerHTMLClass('span', HTMLSpanElement);
-registerHTMLClass('table', HTMLTableElement);
-registerHTMLClass(['td', 'th'], HTMLTableCellElement);
-registerHTMLClass(['tbody', 'tfoot', 'thead'], HTMLTableSectionElement);
-registerHTMLClass('tr', HTMLTableRowElement);
-registerHTMLClass('track', HTMLTrackElement);
-registerHTMLClass('ul', HTMLUListElement);
-registerHTMLClass('video', HTMLVideoElement);
+// https://html.spec.whatwg.org/multipage/obsolete.html#non-conforming-features
+const htmlInterfaces = new Map;
+for (const [names, Class] of [
+  [
+    'abbr acronym address article aside b basefont bdi bdo big center cite code dd dfn dt em ' +
+    'figcaption figure footer header hgroup i kbd main mark nav nobr noembed noframes noscript ' +
+    'plaintext rb rp rt rtc ruby s samp search section small strike strong sub summary sup tt u var wbr',
+    HTMLElement
+  ],
+  ['a', HTMLAnchorElement],
+  ['area', HTMLAreaElement],
+  ['audio', HTMLAudioElement],
+  ['base', HTMLBaseElement],
+  ['blockquote q', HTMLQuoteElement],
+  ['body', HTMLBodyElement],
+  ['br', HTMLBRElement],
+  ['button', HTMLButtonElement],
+  ['canvas', HTMLCanvasElement],
+  ['caption', HTMLTableCaptionElement],
+  ['col colgroup', HTMLTableColElement],
+  ['data', HTMLDataElement],
+  ['datalist', HTMLDataListElement],
+  ['del ins', HTMLModElement],
+  ['details', HTMLDetailsElement],
+  ['dialog', HTMLDialogElement],
+  ['dir', HTMLDirectoryElement],
+  ['div', HTMLDivElement],
+  ['dl', HTMLDListElement],
+  ['embed', HTMLEmbedElement],
+  ['fieldset', HTMLFieldSetElement],
+  ['font', HTMLFontElement],
+  ['form', HTMLFormElement],
+  ['frame', HTMLFrameElement],
+  ['frameset', HTMLFrameSetElement],
+  ['h1 h2 h3 h4 h5 h6', HTMLHeadingElement],
+  ['head', HTMLHeadElement],
+  ['hr', HTMLHRElement],
+  ['html', HTMLHtmlElement],
+  ['iframe', HTMLIFrameElement],
+  ['img', HTMLImageElement],
+  ['input', HTMLInputElement],
+  ['label', HTMLLabelElement],
+  ['legend', HTMLLegendElement],
+  ['li', HTMLLIElement],
+  ['link', HTMLLinkElement],
+  ['map', HTMLMapElement],
+  ['marquee', HTMLMarqueeElement],
+  ['menu', HTMLMenuElement],
+  ['meta', HTMLMetaElement],
+  ['meter', HTMLMeterElement],
+  ['object', HTMLObjectElement],
+  ['ol', HTMLOListElement],
+  ['optgroup', HTMLOptGroupElement],
+  ['option', HTMLOptionElement],
+  ['output', HTMLOutputElement],
+  ['p', HTMLParagraphElement],
+  ['param', HTMLParamElement],
+  ['picture', HTMLPictureElement],
+  ['pre listing xmp', HTMLPreElement],
+  ['progress', HTMLProgressElement],
+  ['script', HTMLScriptElement],
+  ['select', HTMLSelectElement],
+  ['slot', HTMLSlotElement],
+  ['source', HTMLSourceElement],
+  ['span', HTMLSpanElement],
+  ['style', HTMLStyleElement],
+  ['table', HTMLTableElement],
+  ['tbody tfoot thead', HTMLTableSectionElement],
+  ['td th', HTMLTableCellElement],
+  ['template', HTMLTemplateElement],
+  ['textarea', HTMLTextAreaElement],
+  ['time', HTMLTimeElement],
+  ['title', HTMLTitleElement],
+  ['tr', HTMLTableRowElement],
+  ['track', HTMLTrackElement],
+  ['ul', HTMLUListElement],
+  ['video', HTMLVideoElement]
+]) {
+  for (const name of names.split(' '))
+    htmlInterfaces.set(name, Class);
+}
+
+/**
+ * @param {string?} namespace
+ * @param {string} localName
+ * @returns {typeof Element} the interface of an element with this namespace and local name
+ */
+export const elementInterface = (namespace, localName) => {
+  switch (namespace) {
+    case HTML_NAMESPACE:
+      return htmlInterfaces.get(localName) ||
+        (isValidCustomElementName(localName) ? HTMLElement : HTMLUnknownElement);
+    case SVG_NAMESPACE:
+      return SVGElement;
+    case MATHML_NAMESPACE:
+      return MathMLElement;
+  }
+  return Element;
+};
 
 export {
   HTMLElement,

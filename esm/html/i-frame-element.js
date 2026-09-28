@@ -1,4 +1,3 @@
-import {registerHTMLClass} from '../shared/register-html-class.js';
 import {booleanAttribute, stringAttribute} from '../shared/attributes.js';
 
 import {HTMLElement} from './element.js';
@@ -36,7 +35,5 @@ class HTMLIFrameElement extends HTMLElement {
   set loading(value) { stringAttribute.set(this, "loading", value); }
   /* c8 ignore stop */
 }
-
-registerHTMLClass(tagName, HTMLIFrameElement);
 
 export {HTMLIFrameElement};
