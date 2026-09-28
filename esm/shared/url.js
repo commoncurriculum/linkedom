@@ -10,7 +10,6 @@ const parse = (url, base) => {
 };
 
 /**
- * Makes the document look for its base element again.
  * @param {Node} node a node of the document, or the document
  */
 export const baseChanged = node => {

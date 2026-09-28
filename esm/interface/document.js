@@ -9,7 +9,8 @@ import {
 } from '../shared/symbols.js';
 
 import {Facades, illegalConstructor} from '../shared/facades.js';
-import {HTMLClasses, elementInterface} from '../shared/html-classes.js';
+import {HTMLClasses} from '../shared/html-classes.js';
+import {elementInterface} from '../shared/element-interface.js';
 import {asciiLowercase, validAttributeName, validElementName, validateAndExtract} from '../shared/names.js';
 import {Mime} from '../shared/mime.js';
 import {knownSiblings} from '../shared/utils.js';

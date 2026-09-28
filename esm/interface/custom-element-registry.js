@@ -20,10 +20,8 @@ const lookUp = ({registry}, localName, is) => {
 };
 
 /**
- * Runs the constructor of the custom element the document defines for a new
- * HTML element, if it defines one.
  * @param {Document} document
- * @param {Element} element
+ * @param {Element} element a new HTML element
  * @param {string?} is
  */
 export const constructCustomElement = (document, element, is) => {
