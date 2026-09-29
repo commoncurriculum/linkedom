@@ -6721,16 +6721,43 @@ const prepareMatch = (element, selectors) => compile(
   }
 );
 
-const matches = (element, selectors) => is(
-  element,
-  selectors,
-  {
-    strict: true,
-    context: selectors.includes(':scope') ? element : void 0,
-    xmlMode: !ignoreCase(element),
-    adapter
+// `CSSselect.is` compiles its selector on every call, so a caller that tests the same
+// few selectors against many elements — ProseMirror's DOMParser walks a document that
+// way — pays the compiler once per element rather than once per selector.
+const compiledMatchers = new Map();
+
+/**
+ * `CSSselect.compile` returns an untyped query, so without this the generated
+ * declarations widen `matches` from `boolean` to `any`, and `Element` and `Image`
+ * along with it.
+ * @returns {boolean}
+ */
+const matches = (element, selectors) => {
+  // `:scope` resolves against the element it is called on, so it cannot be shared.
+  if (selectors.includes(':scope'))
+    return is(element, selectors, {
+      strict: true,
+      context: element,
+      xmlMode: !ignoreCase(element),
+      adapter
+    });
+  const xmlMode = !ignoreCase(element);
+  const key = xmlMode + ' ' + selectors;
+  let test = compiledMatchers.get(key);
+  if (test === void 0) {
+    try {
+      test = compile(selectors, {strict: true, xmlMode, adapter});
+    } catch (_) {
+      // A selector the compiler rejects keeps the shipped behaviour, the error it
+      // throws included, by recording that it has no cached matcher.
+      test = null;
+    }
+    compiledMatchers.set(key, test);
   }
-);
+  return test === null
+    ? is(element, selectors, {strict: true, xmlMode, adapter})
+    : test(element);
+};
 
 /**
  * @implements globalThis.Text
