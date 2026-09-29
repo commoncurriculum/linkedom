@@ -1,5 +1,5 @@
 import {Declarations, initSync, propertyNames} from '../shared/css/engine.js';
-import wasm from '../shared/css/wasm.js';
+import bytes from '../shared/css/bytes.js';
 import {RESET, STYLE} from '../shared/symbols.js';
 
 import {toDOMString} from './attr.js';
@@ -27,19 +27,9 @@ const defineProperty = (name, property) => {
     });
 };
 
-const decode = base64 => {
-  if (Uint8Array.fromBase64)
-    return Uint8Array.fromBase64(base64);
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++)
-    bytes[i] = binary.charCodeAt(i);
-  return bytes;
-};
-
 let started = false;
 const start = () => {
-  initSync({module: decode(wasm)});
+  initSync({module: bytes()});
   // https://drafts.csswg.org/cssom/#the-cssstyleproperties-interface
   for (const property of propertyNames()) {
     defineProperty(idlAttribute(property, false), property);
@@ -53,12 +43,12 @@ const start = () => {
 
 // Browsers expose the declared names as indexed properties too.
 const indexed = style => {
-  const {length} = style;
-  for (let i = length; i < style[INDICES]; i++)
+  const names = style[DECLARATIONS].names();
+  for (let i = names.length; i < style[INDICES]; i++)
     delete style[i];
-  for (let i = 0; i < length; i++)
-    style[i] = style.item(i);
-  style[INDICES] = length;
+  for (let i = 0; i < names.length; i++)
+    style[i] = names[i];
+  style[INDICES] = names.length;
 };
 
 // Setting TEXT first makes the attribute change this causes a no-op in RESET.
@@ -106,7 +96,7 @@ export class CSSStyleDeclaration {
   set cssFloat(value) { this.setProperty('float', value); }
 
   item(index) {
-    return this[DECLARATIONS].item(index >>> 0) || '';
+    return this[index >>> 0] ?? '';
   }
 
   getPropertyValue(property) {
