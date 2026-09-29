@@ -67,9 +67,9 @@ export class Element extends ParentNode implements globalThis.Element {
     insertAdjacentElement(position: any, element: any): any;
     insertAdjacentHTML(position: any, html: any): void;
     insertAdjacentText(position: any, text: any): void;
-    cloneNode(deep?: boolean): any;
     toJSON(): any[];
     [ATTRIBUTE_CHANGED](attribute: any, value: any): void;
+    [CLONE](document: any, deep: any): any;
     [CLASS_LIST]: any;
     [DATASET]: any;
 }
@@ -77,5 +77,6 @@ import { ParentNode } from '../mixin/parent-node.js';
 import { NodeList } from './node-list.js';
 import { ShadowRoot } from './shadow-root.js';
 import { ATTRIBUTE_CHANGED } from '../shared/symbols.js';
+import { CLONE } from '../shared/symbols.js';
 import { CLASS_LIST } from '../shared/symbols.js';
 import { DATASET } from '../shared/symbols.js';

@@ -3,9 +3,9 @@
 // Document, DocumentFragment
 
 const {ELEMENT_NODE} = require('../shared/constants.js');
-const {END, NEXT} = require('../shared/symbols.js');
+const {CLONE, END, NEXT} = require('../shared/symbols.js');
 const {nonElementAsJSON} = require('../shared/jsdon.js');
-const {ignoreCase} = require('../shared/utils.js');
+const {ignoreCase, linkClones} = require('../shared/utils.js');
 const {innerHTML} = require('../shared/serialize-html.js');
 const {serializeXML} = require('../shared/serialize-xml.js');
 
@@ -22,15 +22,11 @@ class NonElementParentNode extends ParentNode {
     return null;
   }
 
-  cloneNode(deep) {
-    const {ownerDocument, constructor} = this;
-    const nonEPN = new constructor(ownerDocument);
-    if (deep) {
-      const {[END]: end} = nonEPN;
-      for (const node of this.childNodes)
-        nonEPN.insertBefore(node.cloneNode(deep), end);
-    }
-    return nonEPN; 
+  [CLONE](document, deep) {
+    const clone = new this.constructor(document);
+    if (deep)
+      linkClones(this, clone, document);
+    return clone;
   }
 
   toString() {

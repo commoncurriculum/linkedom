@@ -32,10 +32,5 @@ class Text extends CharacterData {
     }
     return text.join('');
   }
-
-  cloneNode() {
-    const {ownerDocument, [VALUE]: data} = this;
-    return new Text(ownerDocument, data);
-  }
 }
 exports.Text = Text

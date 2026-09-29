@@ -21,7 +21,7 @@ export class ParentNode extends Node {
     prepend(...nodes: any[]): void;
     append(...nodes: any[]): void;
     replaceChildren(...nodes: any[]): void;
-    getElementsByClassName(className: any): NodeList;
+    getElementsByClassName(classNames: any): NodeList;
     getElementsByTagName(qualifiedName: any): NodeList;
     getElementsByTagNameNS(namespace: any, localName: any): NodeList;
     querySelector(selectors: any): any;

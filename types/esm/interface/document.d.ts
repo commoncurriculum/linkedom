@@ -4,6 +4,14 @@
 export class Document extends NonElementParentNode implements globalThis.Document {
     constructor(type: any);
     /**
+     * @type {string}
+     */
+    get contentType(): string;
+    /**
+     * @type {DOMImplementation}
+     */
+    get implementation(): DOMImplementation;
+    /**
      * @type {globalThis.Document['defaultView']}
      */
     get defaultView(): Window & typeof globalThis;
@@ -26,12 +34,12 @@ export class Document extends NonElementParentNode implements globalThis.Documen
     createTreeWalker(root: any, whatToShow?: number): TreeWalker;
     createNodeIterator(root: any, whatToShow?: number): TreeWalker;
     createEvent(name: any): any;
-    cloneNode(deep?: boolean): any;
     importNode(externalNode: any, ...args: any[]): any;
     querySelectorAll(selectors: any): any;
     createAttributeNS(namespace: any, qualifiedName: any): Attr;
     createElementNS(namespace: any, qualifiedName: any, options: any): Element;
-    [CREATE_ELEMENT](namespace: any, localName: any, prefix?: any, is?: any): Element;
+    get [TEMPLATE_DOCUMENT](): globalThis.Document;
+    [CREATE_ELEMENT](namespace: any, localName: any, prefix?: any, is?: any, synchronous?: boolean): Element;
     [CUSTOM_ELEMENTS]: {
         active: boolean;
         registry: any;
@@ -49,6 +57,7 @@ export class Document extends NonElementParentNode implements globalThis.Documen
     [UPGRADE]: any;
 }
 import { NonElementParentNode } from '../mixin/non-element-parent-node.js';
+import { DOMImplementation } from './dom-implementation.js';
 import { DocumentType } from './document-type.js';
 import { Attr } from './attr.js';
 import { CDATASection } from './cdata-section.js';
@@ -58,6 +67,7 @@ import { Range } from './range.js';
 import { Text } from './text.js';
 import { TreeWalker } from './tree-walker.js';
 import { Element } from './element.js';
+import { TEMPLATE_DOCUMENT } from '../shared/symbols.js';
 import { CREATE_ELEMENT } from '../shared/symbols.js';
 import { CUSTOM_ELEMENTS } from '../shared/symbols.js';
 import { MUTATION_OBSERVER } from '../shared/symbols.js';

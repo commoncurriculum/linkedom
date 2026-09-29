@@ -18,12 +18,13 @@ const {
 } = require('../shared/attributes.js');
 
 const {
-  ATTRIBUTE_CHANGED, CLASS_LIST, CONTENT, CREATE_ELEMENT, CUSTOM_ELEMENTS, DATASET, END, NEXT, PREV, NAMESPACE, PREFIX, RESET
+  ATTRIBUTE_CHANGED, CLASS_LIST, CLONE, CONTENT, CREATE_ELEMENT, DATASET, END, NEXT, PREV, NAMESPACE, PREFIX, RESET
 } = require('../shared/symbols.js');
 
 const {
   ignoreCase,
   knownAdjacent,
+  linkClones,
   String
 } = require('../shared/utils.js');
 
@@ -52,6 +53,7 @@ const {ParentNode} = require('../mixin/parent-node.js');
 const {DOMStringMap} = require('../dom/string-map.js');
 const {DOMTokenList} = require('../dom/token-list.js');
 
+const {upgradeClone} = require('./custom-element-registry.js');
 const {Event} = require('./event.js');
 const {NamedNodeMap} = require('./named-node-map.js');
 const {ShadowRoot} = require('./shadow-root.js');
@@ -67,11 +69,12 @@ const attributesHandler = {
 };
 
 // https://dom.spec.whatwg.org/#concept-node-clone
-const create = (ownerDocument, element, deep)  => {
-  const is = ownerDocument[CUSTOM_ELEMENTS].active ? element.getAttributeNS(null, 'is') : null;
-  const clone = ownerDocument[CREATE_ELEMENT](element.namespaceURI, element.localName, element.prefix, is);
-  if (deep && element[CONTENT])
-    clone[CONTENT] = element[CONTENT].cloneNode(true);
+const copy = (document, element, deep) => {
+  const clone = document[CREATE_ELEMENT](element.namespaceURI, element.localName, element.prefix, null, false);
+  if (deep && element[CONTENT]) {
+    const content = clone[CONTENT];
+    linkClones(element[CONTENT], content, content.ownerDocument);
+  }
   return clone;
 };
 
@@ -462,14 +465,16 @@ class Element extends ParentNode {
   }
   // </insertAdjacent>
 
-  cloneNode(deep = false) {
-    const {ownerDocument} = this;
+  [CLONE](document, deep) {
     const addNext = next => {
-      next.parentNode = parentNode;
       knownAdjacent($next, next);
       $next = next;
     };
-    const clone = create(ownerDocument, this, deep);
+    const addChild = child => {
+      child.parentNode = parentNode;
+      addNext(child);
+    };
+    const clone = copy(document, this, deep);
     let parentNode = clone, $next = clone;
     let {[NEXT]: next, [END]: prev} = this;
     while (next !== prev && (deep || next.nodeType === ATTRIBUTE_NODE)) {
@@ -480,13 +485,13 @@ class Element extends ParentNode {
           parentNode = parentNode.parentNode;
           break;
         case ELEMENT_NODE: {
-          const node = create(ownerDocument, next, true);
-          addNext(node);
+          const node = copy(document, next, true);
+          addChild(node);
           parentNode = node;
           break;
         }
         case ATTRIBUTE_NODE: {
-          const attr = next.cloneNode(deep);
+          const attr = next[CLONE](document);
           attr.ownerElement = parentNode;
           addNext(attr);
           break;
@@ -494,12 +499,13 @@ class Element extends ParentNode {
         case TEXT_NODE:
         case COMMENT_NODE:
         case CDATA_SECTION_NODE:
-          addNext(next.cloneNode(deep));
+          addChild(next[CLONE](document));
           break;
       }
       next = next[NEXT];
     }
     knownAdjacent($next, clone[END]);
+    upgradeClone(document, clone);
     return clone;
   }
 

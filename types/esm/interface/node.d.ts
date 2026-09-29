@@ -24,6 +24,7 @@ export class Node extends EventTarget implements globalThis.Node {
     get DOCUMENT_FRAGMENT_NODE(): number;
     get DOCUMENT_TYPE_NODE(): number;
     get baseURI(): any;
+    cloneNode(deep?: boolean): any;
     get isConnected(): boolean;
     get nodeName(): any;
     get parentElement(): any;
@@ -39,7 +40,6 @@ export class Node extends EventTarget implements globalThis.Node {
     set textContent(value: any);
     get textContent(): any;
     normalize(): void;
-    cloneNode(): any;
     contains(): boolean;
     /**
      * Inserts a node before a reference node as a child of this parent node.

@@ -1,5 +1,6 @@
 'use strict';
 const {DOCUMENT_TYPE_NODE} = require('../shared/constants.js');
+const {CLONE} = require('../shared/symbols.js');
 const {documentTypeAsJSON} = require('../shared/jsdon.js');
 
 const {Node} = require('./node.js');
@@ -15,9 +16,9 @@ class DocumentType extends Node {
     this.systemId = systemId;
   }
 
-  cloneNode() {
-    const {ownerDocument, name, publicId, systemId} = this;
-    return new DocumentType(ownerDocument, name, publicId, systemId);
+  [CLONE](document) {
+    const {name, publicId, systemId} = this;
+    return new DocumentType(document, name, publicId, systemId);
   }
 
   toJSON() {

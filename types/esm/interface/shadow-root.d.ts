@@ -6,5 +6,7 @@ export class ShadowRoot extends NonElementParentNode implements globalThis.Shado
     host: any;
     set innerHTML(html: string);
     get innerHTML(): string;
+    [CLONE](): void;
 }
 import { NonElementParentNode } from '../mixin/non-element-parent-node.js';
+import { CLONE } from '../shared/symbols.js';

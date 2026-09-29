@@ -13,7 +13,7 @@ const {
   SVG_NAMESPACE
 } = require('./constants.js');
 
-const {CREATE_ELEMENT} = require('./symbols.js');
+const {CREATE_ELEMENT, DOM_PARSER} = require('./symbols.js');
 
 const {linkAttribute, linkNode} = require('./utils.js');
 
@@ -23,6 +23,7 @@ const {Comment} = require('../interface/comment.js');
 const {DocumentType} = require('../interface/document-type.js');
 const {Text} = require('../interface/text.js');
 
+const {DOMParser} = require('../dom/parser.js');
 const {HTMLDocument} = require('../html/document.js');
 
 const {parse} = JSON;
@@ -41,6 +42,7 @@ const parseJSON = value => {
   const array = typeof value === 'string' ? parse(value) : value;
   const {length} = array;
   const document = new HTMLDocument;
+  document[DOM_PARSER] = DOMParser;
   let parentNode = document, i = 0;
   while (i < length) {
     let nodeType = array[i++];

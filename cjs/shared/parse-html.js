@@ -13,7 +13,7 @@ const {
 } = require('./constants.js');
 
 const {
-  ATTRIBUTE_CHANGED, CREATE_ELEMENT, CUSTOM_ELEMENTS, DOCTYPE, END, MODE, NEXT, PREV, VALUE
+  ATTRIBUTE_CHANGED, CONTENT, CREATE_ELEMENT, CUSTOM_ELEMENTS, DOCTYPE, END, MODE, NEXT, PREV, VALUE
 } = require('./symbols.js');
 const {getEnd, knownAdjacent, linkAttribute, linkNode} = require('./utils.js');
 
@@ -34,17 +34,31 @@ class Adapter {
   constructor(document) {
     this.document = document;
     this.active = document[CUSTOM_ELEMENTS].active;
+    this.current = null;
+  }
+
+  onItemPush(element) { this.current = element; }
+  onItemPop(_, current) { this.current = current; }
+
+  // https://html.spec.whatwg.org/multipage/parsing.html#create-an-element-for-the-token
+  // uses the document of the node the element goes into, and the contents of a template
+  // have their own.
+  target() {
+    const {current} = this;
+    if (!current)
+      return this.document;
+    return current.localName === 'template' && current[CONTENT] ?
+      current[CONTENT].ownerDocument : current.ownerDocument;
   }
 
   createDocument() { return this.document; }
   createDocumentFragment() { return this.document.createDocumentFragment(); }
-  createCommentNode(data) { return this.document.createComment(data); }
-  createTextNode(data) { return this.document.createTextNode(data); }
+  createCommentNode(data) { return this.target().createComment(data); }
 
   createElement(localName, namespace, attrs) {
     const is = this.active && namespace === HTML_NAMESPACE ?
       attrs.find(({name}) => name === 'is')?.value ?? null : null;
-    const element = this.document[CREATE_ELEMENT](namespace, localName, null, is);
+    const element = this.target()[CREATE_ELEMENT](namespace, localName, null, is);
     for (const attr of attrs)
       this.addAttribute(element, attr);
     return element;
@@ -52,7 +66,7 @@ class Adapter {
 
   addAttribute(element, {name: localName, value, namespace, prefix}, last) {
     const name = prefix ? `${prefix}:${localName}` : localName;
-    const attribute = new Attr(this.document, name, value, namespace || null, prefix || null, localName);
+    const attribute = new Attr(element.ownerDocument, name, value, namespace || null, prefix || null, localName);
     linkAttribute(element, attribute, last);
     if (this.active) {
       element[ATTRIBUTE_CHANGED](attribute, value);
@@ -87,7 +101,7 @@ class Adapter {
     if (previous.nodeType === TEXT_NODE)
       previous[VALUE] += text;
     else
-      this.insertBefore(parentNode, this.createTextNode(text), reference);
+      this.insertBefore(parentNode, parentNode.ownerDocument.createTextNode(text), reference);
   }
 
   // The standard adds only the attributes the element doesn't have yet, where
@@ -160,8 +174,9 @@ exports.parseHTMLDocument = parseHTMLDocument;
 /**
  * @param {Element} context the element whose children the markup becomes
  * @param {string} html
+ * @param {Document} document the document of the nodes
  * @returns {DocumentFragment}
  */
-const parseHTMLFragment = (context, html) =>
-  parseFragment(context, html, {...options, treeAdapter: new Adapter(context.ownerDocument)});
+const parseHTMLFragment = (context, html, document) =>
+  parseFragment(context, html, {...options, treeAdapter: new Adapter(document)});
 exports.parseHTMLFragment = parseHTMLFragment;

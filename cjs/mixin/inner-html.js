@@ -19,7 +19,8 @@ exports.getInnerHtml = getInnerHtml;
  * @param {String} html
  */
 const setInnerHtml = (node, html) => {
-  const fragment = parseFragment(node.nodeType === ELEMENT_NODE ? node : node.host, html);
-  (node.nodeType === ELEMENT_NODE && isTemplate(node) ? node.content : node).replaceChildren(fragment);
+  const isElement = node.nodeType === ELEMENT_NODE;
+  const target = isElement && isTemplate(node) ? node.content : node;
+  target.replaceChildren(parseFragment(isElement ? node : node.host, html, target.ownerDocument));
 };
 exports.setInnerHtml = setInnerHtml;

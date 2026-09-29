@@ -1,6 +1,6 @@
 'use strict';
 const {ATTRIBUTE_NODE, HTML_NAMESPACE} = require('../shared/constants.js');
-const {VALUE} = require('../shared/symbols.js');
+const {CLONE, VALUE} = require('../shared/symbols.js');
 const {String, ignoreCase} = require('../shared/utils.js');
 const {attrAsJSON} = require('../shared/jsdon.js');
 const {attributeChanged} = require('../shared/attributes.js');
@@ -45,9 +45,9 @@ class Attr extends Node {
       attributeChanged(ownerElement, this, oldValue, this[VALUE]);
   }
 
-  cloneNode() {
-    const {ownerDocument, name, [VALUE]: value, namespaceURI, prefix, localName} = this;
-    return new Attr(ownerDocument, name, value, namespaceURI, prefix, localName);
+  [CLONE](document) {
+    const {name, [VALUE]: value, namespaceURI, prefix, localName} = this;
+    return new Attr(document, name, value, namespaceURI, prefix, localName);
   }
 
   toString() {

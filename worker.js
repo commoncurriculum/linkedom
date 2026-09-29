@@ -10,6 +10,9 @@ const CUSTOM_ELEMENTS = Symbol('CustomElements');
 // used in HTMLTemplateElement
 const CONTENT = Symbol('content');
 
+// used by every node to clone itself into a given document
+const CLONE = Symbol('clone');
+
 // used in Element for data attributes
 const DATASET = Symbol('dataset');
 
@@ -69,6 +72,9 @@ const SHEET = Symbol('sheet');
 
 // used to define start node reference
 const START = Symbol('start');
+
+// used in Document for the document its template contents belong to
+const TEMPLATE_DOCUMENT = Symbol('templateDocument');
 
 // used to define special CSS style attribute
 const STYLE = Symbol('style');
@@ -164,6 +170,17 @@ const linkNode = (parentNode, node, next = parentNode[END]) => {
 const linkAttribute = (element, attribute, last = element[END][PREV]) => {
   attribute.ownerElement = element;
   knownSiblings(last, attribute, last[NEXT]);
+};
+
+/**
+ * Links to parentNode a deep clone of each child of source, without running any insertion steps.
+ * @param {Node} source
+ * @param {Node} parentNode
+ * @param {Document} document the document the clones belong to
+ */
+const linkClones = (source, parentNode, document) => {
+  for (let child = source.firstChild; child; child = child.nextSibling)
+    linkNode(parentNode, child[CLONE](document, true));
 };
 
 const setAdjacent = (prev, next) => {
@@ -9106,14 +9123,40 @@ const lookUp = ({registry}, localName, is) => {
  * @param {string?} is
  */
 const constructCustomElement = (document, element, is) => {
-  const definition = lookUp(document[CUSTOM_ELEMENTS], element.localName, is);
+  const registry = document[CUSTOM_ELEMENTS];
+  const definition = lookUp(registry, element.localName, is);
   if (definition) {
     const {Class} = definition;
+    // HTMLElement's constructor looks for the element on the document that defined its class,
+    // which a cloned document sharing the registry is not.
+    const {ownerDocument} = registry;
     setPrototypeOf(element, Class.prototype);
-    document[UPGRADE] = {element, values: []};
-    new Class(document, element.localName);
+    ownerDocument[UPGRADE] = {element, values: []};
+    new Class(ownerDocument, element.localName);
     customElements.set(element, {connected: false});
   }
+};
+
+/**
+ * https://dom.spec.whatwg.org/#concept-node-clone creates elements without their
+ * definition and upgrades them once they have their attributes.
+ * @param {Document} document
+ * @param {Element} element a clone and its descendants
+ */
+const upgradeClone = (document, element) => {
+  const registry = document[CUSTOM_ELEMENTS];
+  if (registry.active) {
+    const end = element[END];
+    for (let next = element; next !== end; next = next[NEXT]) {
+      if (next.nodeType === ELEMENT_NODE && next.namespaceURI === HTML_NAMESPACE)
+        registry.upgrade(next);
+    }
+  }
+};
+
+const adoptedCallback = (element, oldDocument, newDocument) => {
+  if (reactive && customElements.has(element) && element.adoptedCallback)
+    element.adoptedCallback(oldDocument, newDocument);
 };
 
 const attributeChangedCallback$1 = (element, attributeName, oldValue, newValue) => {
@@ -9222,13 +9265,7 @@ class CustomElementRegistry {
       localName: extend || localName
     });
 
-    const check = extend ?
-      element => {
-        return element.localName === extend &&
-               element.getAttribute('is') === localName;
-      } :
-      element => element.localName === localName;
-    registry.set(localName, {Class, check, localName: extend || localName});
+    registry.set(localName, {Class, localName: extend || localName});
     if (waiting.has(localName)) {
       for (const resolve of waiting.get(localName))
         resolve(Class);
@@ -9245,31 +9282,29 @@ class CustomElementRegistry {
   upgrade(element) {
     if (customElements.has(element))
       return;
-    const {ownerDocument, registry} = this;
-    const ce = element.getAttribute('is') || element.localName;
-    if (registry.has(ce)) {
-      const {Class, check} = registry.get(ce);
-      if (check(element)) {
-        const {attributes, isConnected} = element;
-        for (const attr of attributes)
-          element.removeAttributeNode(attr);
+    const {ownerDocument} = this;
+    const definition = lookUp(this, element.localName, element.getAttribute('is'));
+    if (definition) {
+      const {Class} = definition;
+      const {attributes, isConnected} = element;
+      for (const attr of attributes)
+        element.removeAttributeNode(attr);
 
-        const values = entries(element);
-        for (const [key] of values)
-          delete element[key];
+      const values = entries(element);
+      for (const [key] of values)
+        delete element[key];
 
-        setPrototypeOf(element, Class.prototype);
-        ownerDocument[UPGRADE] = {element, values};
-        new Class(ownerDocument, ce);
+      setPrototypeOf(element, Class.prototype);
+      ownerDocument[UPGRADE] = {element, values};
+      new Class(ownerDocument, element.localName);
 
-        customElements.set(element, {connected: isConnected});
+      customElements.set(element, {connected: isConnected});
 
-        for (const attr of attributes)
-          element.setAttributeNode(attr);
+      for (const attr of attributes)
+        element.setAttributeNode(attr);
 
-        if (isConnected && element.connectedCallback)
-          element.connectedCallback();
-      }
+      if (isConnected && element.connectedCallback)
+        element.connectedCallback();
     }
   }
 
@@ -9504,18 +9539,22 @@ const attributeChanged = (element, attribute, oldValue, value) => {
   attributeChangedCallback$1(element, name, oldValue, value);
 };
 
+// https://dom.spec.whatwg.org/#concept-element-attributes-append
 const setAttribute = (element, attribute) => {
   let last = element;
   while (last[NEXT].nodeType === ATTRIBUTE_NODE)
     last = last[NEXT];
   linkAttribute(element, attribute, last);
+  attribute.ownerDocument = element.ownerDocument;
   attributeChanged(element, attribute, null, attribute[VALUE]);
 };
 
+// https://dom.spec.whatwg.org/#concept-element-attributes-replace
 const replaceAttribute = (element, previous, attribute) => {
   knownSiblings(previous[PREV], attribute, previous[NEXT]);
   previous.ownerElement = previous[PREV] = previous[NEXT] = null;
   attribute.ownerElement = element;
+  attribute.ownerDocument = element.ownerDocument;
   attributeChanged(element, attribute, previous[VALUE], attribute[VALUE]);
 };
 
@@ -10347,7 +10386,7 @@ const baseChanged = node => {
 
 // https://html.spec.whatwg.org/multipage/urls-and-fetching.html#document-base-url
 const documentBaseURL = document => {
-  const fallback = document.defaultView.location?.href || 'about:blank';
+  const fallback = document.defaultView?.location?.href || 'about:blank';
   if (document[BASE] === undefined)
     document[BASE] = document.querySelector('base[href]');
   const base = document[BASE];
@@ -10544,6 +10583,11 @@ let Node$1 = class Node extends DOMEventTarget {
     return document ? documentBaseURL(document) : null;
   }
 
+  // https://dom.spec.whatwg.org/#dom-node-clonenode
+  cloneNode(deep = false) {
+    return this[CLONE](this.ownerDocument, !!deep);
+  }
+
   /* c8 ignore start */
   // mixin: node
   get isConnected() { return false; }
@@ -10563,7 +10607,6 @@ let Node$1 = class Node extends DOMEventTarget {
   get textContent() { return null; }
   set textContent(value) {}
   normalize() {}
-  cloneNode() { return null; }
   contains() { return false; }
   /**
    * Inserts a node before a reference node as a child of this parent node.
@@ -10712,9 +10755,9 @@ let Attr$1 = class Attr extends Node$1 {
       attributeChanged(ownerElement, this, oldValue, this[VALUE]);
   }
 
-  cloneNode() {
-    const {ownerDocument, name, [VALUE]: value, namespaceURI, prefix, localName} = this;
-    return new Attr(ownerDocument, name, value, namespaceURI, prefix, localName);
+  [CLONE](document) {
+    const {name, [VALUE]: value, namespaceURI, prefix, localName} = this;
+    return new Attr(document, name, value, namespaceURI, prefix, localName);
   }
 
   toString() {
@@ -10745,17 +10788,31 @@ class Adapter {
   constructor(document) {
     this.document = document;
     this.active = document[CUSTOM_ELEMENTS].active;
+    this.current = null;
+  }
+
+  onItemPush(element) { this.current = element; }
+  onItemPop(_, current) { this.current = current; }
+
+  // https://html.spec.whatwg.org/multipage/parsing.html#create-an-element-for-the-token
+  // uses the document of the node the element goes into, and the contents of a template
+  // have their own.
+  target() {
+    const {current} = this;
+    if (!current)
+      return this.document;
+    return current.localName === 'template' && current[CONTENT] ?
+      current[CONTENT].ownerDocument : current.ownerDocument;
   }
 
   createDocument() { return this.document; }
   createDocumentFragment() { return this.document.createDocumentFragment(); }
-  createCommentNode(data) { return this.document.createComment(data); }
-  createTextNode(data) { return this.document.createTextNode(data); }
+  createCommentNode(data) { return this.target().createComment(data); }
 
   createElement(localName, namespace, attrs) {
     const is = this.active && namespace === HTML_NAMESPACE ?
       attrs.find(({name}) => name === 'is')?.value ?? null : null;
-    const element = this.document[CREATE_ELEMENT](namespace, localName, null, is);
+    const element = this.target()[CREATE_ELEMENT](namespace, localName, null, is);
     for (const attr of attrs)
       this.addAttribute(element, attr);
     return element;
@@ -10763,7 +10820,7 @@ class Adapter {
 
   addAttribute(element, {name: localName, value, namespace, prefix}, last) {
     const name = prefix ? `${prefix}:${localName}` : localName;
-    const attribute = new Attr$1(this.document, name, value, namespace || null, prefix || null, localName);
+    const attribute = new Attr$1(element.ownerDocument, name, value, namespace || null, prefix || null, localName);
     linkAttribute(element, attribute, last);
     if (this.active) {
       element[ATTRIBUTE_CHANGED](attribute, value);
@@ -10798,7 +10855,7 @@ class Adapter {
     if (previous.nodeType === TEXT_NODE)
       previous[VALUE] += text;
     else
-      this.insertBefore(parentNode, this.createTextNode(text), reference);
+      this.insertBefore(parentNode, parentNode.ownerDocument.createTextNode(text), reference);
   }
 
   // The standard adds only the attributes the element doesn't have yet, where
@@ -10870,10 +10927,11 @@ const parseHTMLDocument = (document, html) => {
 /**
  * @param {Element} context the element whose children the markup becomes
  * @param {string} html
+ * @param {Document} document the document of the nodes
  * @returns {DocumentFragment}
  */
-const parseHTMLFragment = (context, html) =>
-  parseFragment$1(context, html, {...options, treeAdapter: new Adapter(context.ownerDocument)});
+const parseHTMLFragment = (context, html, document) =>
+  parseFragment$1(context, html, {...options, treeAdapter: new Adapter(document)});
 
 var saxes = {};
 
@@ -13360,13 +13418,14 @@ const parseDocument = (document, markup) => document[MIME].ignoreCase ?
 /**
  * @param {Element} context the element the markup is parsed for
  * @param {string?} markup
+ * @param {Document} document the document of the nodes
  * @returns {DocumentFragment}
  */
-const parseFragment = (context, markup) => {
+const parseFragment = (context, markup, document = context.ownerDocument) => {
   markup = markup === null ? '' : String(markup);
   return ignoreCase(context) ?
-    parseHTMLFragment(context, markup) :
-    parseXML(context.ownerDocument.createDocumentFragment(), markup, context);
+    parseHTMLFragment(context, markup, document) :
+    parseXML(document.createDocumentFragment(), markup, context);
 };
 
 /**
@@ -13378,6 +13437,29 @@ const fragmentContext = node => (
   node.nodeType === ELEMENT_NODE &&
   !(ignoreCase(node) && node.localName === 'html' && node.namespaceURI === HTML_NAMESPACE)
 ) ? node : (node.ownerDocument || node).createElement('body');
+
+const windowless = new WeakSet;
+
+/**
+ * @param {Document} document a document without a browsing context, so without a window
+ * @param {Document} source the document it is made for
+ * @returns {Document}
+ */
+const withoutBrowsingContext = (document, source) => {
+  windowless.add(document);
+  defineProperties(document, {
+    // A mutation reaches its observers through the node's document, and the
+    // observers of source observe this document's nodes too.
+    [MUTATION_OBSERVER]: {get: () => source[MUTATION_OBSERVER]}
+  });
+  return document;
+};
+
+/**
+ * @param {Document} document
+ * @returns {boolean}
+ */
+const hasBrowsingContext = document => !windowless.has(document);
 
 const isConnected = ({ownerDocument, parentNode}) => {
   while (parentNode) {
@@ -13505,6 +13587,10 @@ let CharacterData$1 = class CharacterData extends Node$1 {
     this[VALUE] = $String(data);
   }
 
+  [CLONE](document) {
+    return new this.constructor(document, this[VALUE]);
+  }
+
   // <Mixins>
   get isConnected() { return isConnected(this); }
   get parentElement() { return parentElement(this); }
@@ -13574,11 +13660,6 @@ let CDATASection$1 = class CDATASection extends CharacterData$1 {
   constructor(ownerDocument, data = '') {
     super(ownerDocument, '#cdatasection', CDATA_SECTION_NODE, data);
   }
-
-  cloneNode() {
-    const {ownerDocument, [VALUE]: data} = this;
-    return new CDATASection(ownerDocument, data);
-  }
 };
 
 /**
@@ -13587,11 +13668,6 @@ let CDATASection$1 = class CDATASection extends CharacterData$1 {
 let Comment$2 = class Comment extends CharacterData$1 {
   constructor(ownerDocument, data = '') {
     super(ownerDocument, '#comment', COMMENT_NODE, data);
-  }
-
-  cloneNode() {
-    const {ownerDocument, [VALUE]: data} = this;
-    return new Comment(ownerDocument, data);
   }
 };
 
@@ -17093,11 +17169,6 @@ let Text$1 = class Text extends CharacterData$1 {
     }
     return text.join('');
   }
-
-  cloneNode() {
-    const {ownerDocument, [VALUE]: data} = this;
-    return new Text(ownerDocument, data);
-  }
 };
 
 // https://dom.spec.whatwg.org/#interface-parentnode
@@ -17112,6 +17183,26 @@ const nodeArgument = (method, node) => {
     throw new TypeError(`Failed to execute '${method}' on 'Node': parameter 1 is not of type 'Node'.`);
 };
 
+// https://dom.spec.whatwg.org/#concept-node-adopt
+const adopt = (node, document) => {
+  const oldDocument = node.ownerDocument;
+  const end = node.nodeType === DOCUMENT_FRAGMENT_NODE ? node[END] : getEnd(node);
+  for (let next = node; ; next = next[NEXT]) {
+    next.ownerDocument = document;
+    if (next.nodeType === ELEMENT_NODE) {
+      // https://html.spec.whatwg.org/multipage/scripting.html#template-adopting-steps
+      const content = next[CONTENT];
+      if (content && content.ownerDocument !== document[TEMPLATE_DOCUMENT])
+        adopt(content, document[TEMPLATE_DOCUMENT]);
+      if (shadowRoots.has(next))
+        adopt(shadowRoots.get(next).shadowRoot, document);
+      adoptedCallback(next, oldDocument, document);
+    }
+    if (next === end)
+      break;
+  }
+};
+
 const descendants = (root, matches) => {
   const elements = new NodeList;
   let {[NEXT]: next, [END]: end} = root;
@@ -17122,6 +17213,11 @@ const descendants = (root, matches) => {
   }
   return elements;
 };
+
+const asciiWhitespaces$1 = /[\t\n\f\r ]+/;
+
+// https://dom.spec.whatwg.org/#concept-ordered-set-parser
+const orderedSet = value => [...new Set(value.split(asciiWhitespaces$1))].filter(Boolean);
 
 const qualify$1 = ({[PREFIX]: prefix, localName}) => prefix ? `${prefix}:${localName}` : localName;
 
@@ -17247,8 +17343,13 @@ class ParentNode extends Node$1 {
       insert(this, end, nodes);
   }
 
-  getElementsByClassName(className) {
-    return descendants(this, element => element.hasAttribute('class') && element.classList.has(className));
+  // https://dom.spec.whatwg.org/#concept-getelementsbyclassname
+  getElementsByClassName(classNames) {
+    const classes = orderedSet(String(classNames));
+    const hasClasses = ({classList}) => classes.every(token => classList.has(token));
+    return classes.length ?
+      descendants(this, element => element.hasAttribute('class') && hasClasses(element)) :
+      new NodeList;
   }
 
   // https://dom.spec.whatwg.org/#concept-getelementsbytagname
@@ -17317,9 +17418,12 @@ class ParentNode extends Node$1 {
     if (node === this)
       throw new Error('unable to append a node to itself');
     const next = before || this[END];
+    const document = this.ownerDocument || this;
     switch (node.nodeType) {
       case ELEMENT_NODE:
         node.remove();
+        if (node.ownerDocument !== document)
+          adopt(node, document);
         node.parentNode = this;
         knownBoundaries(next[PREV], node, next);
         baseChanged(this);
@@ -17335,6 +17439,8 @@ class ParentNode extends Node$1 {
           if (parentNode)
             parentNode.replaceChildren();
           do {
+            if (firstChild.ownerDocument !== document)
+              adopt(firstChild, document);
             firstChild.parentNode = this;
             moCallback(firstChild, null);
             if (firstChild.nodeType === ELEMENT_NODE)
@@ -17353,6 +17459,8 @@ class ParentNode extends Node$1 {
       /* eslint no-fallthrough:0 */
       // this covers DOCUMENT_TYPE_NODE too
       default:
+        if (node.ownerDocument !== document)
+          adopt(node, document);
         node.parentNode = this;
         knownSiblings(next[PREV], node, next);
         moCallback(node, null);
@@ -17407,15 +17515,11 @@ class NonElementParentNode extends ParentNode {
     return null;
   }
 
-  cloneNode(deep) {
-    const {ownerDocument, constructor} = this;
-    const nonEPN = new constructor(ownerDocument);
-    if (deep) {
-      const {[END]: end} = nonEPN;
-      for (const node of this.childNodes)
-        nonEPN.insertBefore(node.cloneNode(deep), end);
-    }
-    return nonEPN; 
+  [CLONE](document, deep) {
+    const clone = new this.constructor(document);
+    if (deep)
+      linkClones(this, clone, document);
+    return clone;
   }
 
   toString() {
@@ -17451,9 +17555,9 @@ let DocumentType$1 = class DocumentType extends Node$1 {
     this.systemId = systemId;
   }
 
-  cloneNode() {
-    const {ownerDocument, name, publicId, systemId} = this;
-    return new DocumentType(ownerDocument, name, publicId, systemId);
+  [CLONE](document) {
+    const {name, publicId, systemId} = this;
+    return new DocumentType(document, name, publicId, systemId);
   }
 
   toJSON() {
@@ -17476,8 +17580,9 @@ const getInnerHtml = node => ignoreCase(node) ?
  * @param {String} html
  */
 const setInnerHtml = (node, html) => {
-  const fragment = parseFragment(node.nodeType === ELEMENT_NODE ? node : node.host, html);
-  (node.nodeType === ELEMENT_NODE && isTemplate(node) ? node.content : node).replaceChildren(fragment);
+  const isElement = node.nodeType === ELEMENT_NODE;
+  const target = isElement && isTemplate(node) ? node.content : node;
+  target.replaceChildren(parseFragment(isElement ? node : node.host, html, target.ownerDocument));
 };
 
 var uhyphen = camel => camel.replace(/(([A-Z0-9])([A-Z0-9][a-z]))|(([a-z0-9]+)([A-Z]))/g, '$2$5-$3$6')
@@ -17778,6 +17883,10 @@ let ShadowRoot$1 = class ShadowRoot extends NonElementParentNode {
   set innerHTML(html) {
     setInnerHtml(this, html);
   }
+
+  [CLONE]() {
+    throw new DOMException('ShadowRoot nodes are not clonable.', 'NotSupportedError');
+  }
 };
 
 // https://dom.spec.whatwg.org/#interface-element
@@ -17791,11 +17900,12 @@ const attributesHandler = {
 };
 
 // https://dom.spec.whatwg.org/#concept-node-clone
-const create = (ownerDocument, element, deep)  => {
-  const is = ownerDocument[CUSTOM_ELEMENTS].active ? element.getAttributeNS(null, 'is') : null;
-  const clone = ownerDocument[CREATE_ELEMENT](element.namespaceURI, element.localName, element.prefix, is);
-  if (deep && element[CONTENT])
-    clone[CONTENT] = element[CONTENT].cloneNode(true);
+const copy = (document, element, deep) => {
+  const clone = document[CREATE_ELEMENT](element.namespaceURI, element.localName, element.prefix, null, false);
+  if (deep && element[CONTENT]) {
+    const content = clone[CONTENT];
+    linkClones(element[CONTENT], content, content.ownerDocument);
+  }
   return clone;
 };
 
@@ -18186,14 +18296,16 @@ let Element$1 = class Element extends ParentNode {
   }
   // </insertAdjacent>
 
-  cloneNode(deep = false) {
-    const {ownerDocument} = this;
+  [CLONE](document, deep) {
     const addNext = next => {
-      next.parentNode = parentNode;
       knownAdjacent($next, next);
       $next = next;
     };
-    const clone = create(ownerDocument, this, deep);
+    const addChild = child => {
+      child.parentNode = parentNode;
+      addNext(child);
+    };
+    const clone = copy(document, this, deep);
     let parentNode = clone, $next = clone;
     let {[NEXT]: next, [END]: prev} = this;
     while (next !== prev && (deep || next.nodeType === ATTRIBUTE_NODE)) {
@@ -18204,13 +18316,13 @@ let Element$1 = class Element extends ParentNode {
           parentNode = parentNode.parentNode;
           break;
         case ELEMENT_NODE: {
-          const node = create(ownerDocument, next, true);
-          addNext(node);
+          const node = copy(document, next, true);
+          addChild(node);
           parentNode = node;
           break;
         }
         case ATTRIBUTE_NODE: {
-          const attr = next.cloneNode(deep);
+          const attr = next[CLONE](document);
           attr.ownerElement = parentNode;
           addNext(attr);
           break;
@@ -18218,12 +18330,13 @@ let Element$1 = class Element extends ParentNode {
         case TEXT_NODE:
         case COMMENT_NODE:
         case CDATA_SECTION_NODE:
-          addNext(next.cloneNode(deep));
+          addChild(next[CLONE](document));
           break;
       }
       next = next[NEXT];
     }
     knownAdjacent($next, clone[END]);
+    upgradeClone(document, clone);
     return clone;
   }
 
@@ -19199,7 +19312,7 @@ const tagName$h = 'template';
 class HTMLTemplateElement extends HTMLElement {
   constructor(ownerDocument) {
     super(ownerDocument, tagName$h);
-    this[CONTENT] = this.ownerDocument.createDocumentFragment();
+    this[CONTENT] = this.ownerDocument[TEMPLATE_DOCUMENT].createDocumentFragment();
   }
 
   get content() {
@@ -22770,27 +22883,22 @@ const elementInterface = (namespace, localName) => {
   return Element$1;
 };
 
+const xml = type => ({
+  type,
+  docType: '<?xml version="1.0" encoding="utf-8"?>',
+  ignoreCase: false
+});
+
 const Mime = {
   'text/html': {
+    type: 'text/html',
     docType: '<!DOCTYPE html>',
     ignoreCase: true
   },
-  'image/svg+xml': {
-    docType: '<?xml version="1.0" encoding="utf-8"?>',
-    ignoreCase: false
-  },
-  'text/xml': {
-    docType: '<?xml version="1.0" encoding="utf-8"?>',
-    ignoreCase: false
-  },
-  'application/xml': {
-    docType: '<?xml version="1.0" encoding="utf-8"?>',
-    ignoreCase: false
-  },
-  'application/xhtml+xml': {
-    docType: '<?xml version="1.0" encoding="utf-8"?>',
-    ignoreCase: false
-  }
+  'image/svg+xml': xml('image/svg+xml'),
+  'text/xml': xml('text/xml'),
+  'application/xml': xml('application/xml'),
+  'application/xhtml+xml': xml('application/xhtml+xml')
 };
 
 // https://dom.spec.whatwg.org/#interface-customevent
@@ -22807,6 +22915,65 @@ class CustomEvent extends GlobalEvent {
 }
 
 /* c8 ignore stop */
+
+// https://dom.spec.whatwg.org/#interface-domimplementation
+
+
+const documents = new WeakMap;
+
+const invalidDoctypeName = /[\t\n\f\r >\0]/;
+
+const create = (implementation, markup, type) => {
+  const source = documents.get(implementation);
+  return withoutBrowsingContext(new source[DOM_PARSER]().parseFromString(markup, type), source);
+};
+
+/**
+ * @implements globalThis.DOMImplementation
+ */
+class DOMImplementation {
+  /**
+   * @param {Document} document
+   */
+  constructor(document) {
+    documents.set(this, document);
+  }
+
+  hasFeature() {
+    return true;
+  }
+
+  createDocumentType(name, publicId, systemId) {
+    name = String(name);
+    if (invalidDoctypeName.test(name))
+      throw new DOMException(`"${name}" is not a valid doctype name`, 'InvalidCharacterError');
+    return documents.get(this).createDocumentType(name, String(publicId), String(systemId));
+  }
+
+  createDocument(namespace, qualifiedName, doctype = null) {
+    const type = namespace === HTML_NAMESPACE ? 'application/xhtml+xml' : (
+      namespace === SVG_NAMESPACE ? 'image/svg+xml' : 'application/xml'
+    );
+    const document = create(this, '', type);
+    const element = qualifiedName === null || qualifiedName === '' ?
+      null : document.createElementNS(namespace, qualifiedName);
+    if (doctype)
+      document.appendChild(doctype);
+    if (element)
+      document.appendChild(element);
+    return document;
+  }
+
+  createHTMLDocument(title) {
+    const document = create(this, '<!DOCTYPE html>', 'text/html');
+    if (title !== undefined) {
+      const element = document.createElement('title');
+      element.appendChild(document.createTextNode(String(title)));
+      document.head.appendChild(element);
+    }
+    return document;
+  }
+}
 
 // https://dom.spec.whatwg.org/#interface-customevent
 
@@ -23019,6 +23186,8 @@ const globalExports = assign(
 
 const window = new WeakMap;
 
+const implementations = new WeakMap;
+
 // The window's event target, which ends every event path through the document.
 const windowTarget = document => {
   if (!document[EVENT_TARGET]) {
@@ -23048,9 +23217,27 @@ let Document$1 = class Document extends NonElementParentNode {
   }
 
   /**
+   * @type {string}
+   */
+  get contentType() {
+    return this[MIME].type;
+  }
+
+  /**
+   * @type {DOMImplementation}
+   */
+  get implementation() {
+    if (!implementations.has(this))
+      implementations.set(this, new DOMImplementation(this));
+    return implementations.get(this);
+  }
+
+  /**
    * @type {globalThis.Document['defaultView']}
    */
   get defaultView() {
+    if (!hasBrowsingContext(this))
+      return null;
     if (!window.has(this))
       window.set(this, new Proxy(globalThis, {
         set: (target, name, value) => {
@@ -23131,6 +23318,18 @@ let Document$1 = class Document extends NonElementParentNode {
 
   get isConnected() { return true; }
 
+  // https://html.spec.whatwg.org/multipage/scripting.html#appropriate-template-contents-owner-document
+  get [TEMPLATE_DOCUMENT]() {
+    const document = withoutBrowsingContext(
+      new this.constructor(this[MIME].ignoreCase ? 'text/html' : 'application/xml'),
+      this
+    );
+    document[DOM_PARSER] = this[DOM_PARSER];
+    defineProperties(document, {[TEMPLATE_DOCUMENT]: {value: document}});
+    defineProperties(this, {[TEMPLATE_DOCUMENT]: {value: document}});
+    return document;
+  }
+
   /**
    * @protected
    */
@@ -23154,10 +23353,10 @@ let Document$1 = class Document extends NonElementParentNode {
    */
   createElement(localName, options) {
     localName = validElementName(String(localName));
-    const isHTML = this[MIME].ignoreCase;
+    const {ignoreCase: isHTML, type} = this[MIME];
     const is = isHTML && options && options.is || null;
     const element = this[CREATE_ELEMENT](
-      isHTML ? HTML_NAMESPACE : null,
+      isHTML || type === 'application/xhtml+xml' ? HTML_NAMESPACE : null,
       isHTML ? asciiLowercase(localName) : localName,
       null,
       is
@@ -23196,21 +23395,18 @@ let Document$1 = class Document extends NonElementParentNode {
     return event;
   }
 
-  cloneNode(deep = false) {
-    const {
-      constructor,
-      [CUSTOM_ELEMENTS]: customElements,
-      [DOCTYPE]: doctype
-    } = this;
-    const document = new constructor();
-    document[CUSTOM_ELEMENTS] = customElements;
+  [CLONE](_, deep) {
+    const document = new this.constructor(this[MIME].type);
+    document[CUSTOM_ELEMENTS] = this[CUSTOM_ELEMENTS];
+    document[DOM_PARSER] = this[DOM_PARSER];
+    document[MODE] = this[MODE];
     if (deep) {
-      const end = document[END];
-      const {childNodes} = this;
-      for (let {length} = childNodes, i = 0; i < length; i++)
-        document.insertBefore(childNodes[i].cloneNode(true), end);
-      if (doctype)
-        document[DOCTYPE] = childNodes[0];
+      for (const child of this.childNodes) {
+        const clone = child[CLONE](document, true);
+        if (clone.nodeType === DOCUMENT_TYPE_NODE)
+          document[DOCTYPE] = clone;
+        document.insertBefore(clone);
+      }
     }
     return document;
   }
@@ -23219,31 +23415,11 @@ let Document$1 = class Document extends NonElementParentNode {
     // important: keep the signature length as *one*
     // or it would behave like old IE or Edge with polyfills
     const deep = 1 < arguments.length && !!arguments[1];
-    const node = externalNode.cloneNode(deep);
-    const {[CUSTOM_ELEMENTS]: customElements} = this;
-    const {active} = customElements;
-    const upgrade = element => {
-      const {ownerDocument, nodeType} = element;
-      element.ownerDocument = this;
-      if (active && ownerDocument !== this && nodeType === ELEMENT_NODE)
-        customElements.upgrade(element);
-    };
-    upgrade(node);
-    if (deep) {
-      switch (node.nodeType) {
-        case ELEMENT_NODE:
-        case DOCUMENT_FRAGMENT_NODE: {
-          let {[NEXT]: next, [END]: end} = node;
-          while (next !== end) {
-            if (next.nodeType === ELEMENT_NODE)
-              upgrade(next);
-            next = next[NEXT];
-          }
-          break;
-        }
-      }
-    }
-    return node;
+    if (externalNode.nodeType === DOCUMENT_NODE)
+      throw new DOMException('Cannot import a document node', 'NotSupportedError');
+    if (externalNode instanceof ShadowRoot$1)
+      throw new DOMException('Cannot adopt a shadow root', 'NotSupportedError');
+    return externalNode[CLONE](this, deep);
   }
 
   toString() {
@@ -23274,14 +23450,14 @@ let Document$1 = class Document extends NonElementParentNode {
   }
 
   // https://dom.spec.whatwg.org/#concept-create-element
-  [CREATE_ELEMENT](namespace, localName, prefix = null, is = null) {
+  [CREATE_ELEMENT](namespace, localName, prefix = null, is = null, synchronous = true) {
     const Class = elementInterface(namespace, localName);
     const element = new Class(this, localName);
     if (Class === Element$1)
       element[NAMESPACE] = namespace;
     if (prefix)
       element[PREFIX] = prefix;
-    if (namespace === HTML_NAMESPACE && this[CUSTOM_ELEMENTS].active)
+    if (synchronous && namespace === HTML_NAMESPACE && this[CUSTOM_ELEMENTS].active)
       constructCustomElement(this, element, is);
     return element;
   }
@@ -23364,7 +23540,10 @@ class HTMLDocument extends Document$1 {
  * @implements globalThis.Document
  */
 class SVGDocument extends Document$1 {
-  constructor() { super('image/svg+xml'); }
+  /**
+   * @param {string} type an XML content type
+   */
+  constructor(type = 'image/svg+xml') { super(type); }
   toString() {
     return this[MIME].docType + super.toString();
   }
@@ -23374,7 +23553,10 @@ class SVGDocument extends Document$1 {
  * @implements globalThis.XMLDocument
  */
 class XMLDocument extends Document$1 {
-  constructor() { super('text/xml'); }
+  /**
+   * @param {string} type an XML content type
+   */
+  constructor(type = 'application/xml') { super(type); }
   toString() {
     return this[MIME].docType + super.toString();
   }
@@ -23382,12 +23564,16 @@ class XMLDocument extends Document$1 {
 
 const PARSER_ERROR_NAMESPACE = 'http://www.mozilla.org/newlayout/xml/parsererror.xml';
 
+const supportedTypes = new Set([
+  'text/html', 'text/xml', 'application/xml', 'application/xhtml+xml', 'image/svg+xml'
+]);
+
 /**
  * @implements globalThis.DOMParser
  */
 class DOMParser {
 
-  /** @typedef {{ "text/html": HTMLDocument, "image/svg+xml": SVGDocument, "text/xml": XMLDocument }} MimeToDoc */
+  /** @typedef {{ "text/html": HTMLDocument, "image/svg+xml": SVGDocument, "text/xml": XMLDocument, "application/xml": XMLDocument, "application/xhtml+xml": XMLDocument }} MimeToDoc */
   /**
    * @template {keyof MimeToDoc} MIME
    * @param {string} markupLanguage
@@ -23395,10 +23581,13 @@ class DOMParser {
    * @returns {MimeToDoc[MIME]}
    */
   parseFromString(markupLanguage, mimeType, globals = null) {
-    const isHTML = mimeType === 'text/html';
+    const type = String(mimeType);
+    if (!supportedTypes.has(type))
+      throw new TypeError(`Failed to execute 'parseFromString' on 'DOMParser': parameter 2 '${type}' is not a valid enumeration value for SupportedType`);
+    const isHTML = type === 'text/html';
     const create = () => {
       const document = isHTML ? new HTMLDocument : (
-        mimeType === 'image/svg+xml' ? new SVGDocument : new XMLDocument
+        type === 'image/svg+xml' ? new SVGDocument : new XMLDocument(type)
       );
       document[DOM_PARSER] = DOMParser;
       if (globals)
@@ -23442,6 +23631,7 @@ const parseJSON = value => {
   const array = typeof value === 'string' ? parse(value) : value;
   const {length} = array;
   const document = new HTMLDocument;
+  document[DOM_PARSER] = DOMParser;
   let parentNode = document, i = 0;
   while (i < length) {
     let nodeType = array[i++];

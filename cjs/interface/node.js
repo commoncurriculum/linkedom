@@ -20,7 +20,7 @@ const {
   XMLNS_NAMESPACE
 } = require('../shared/constants.js');
 
-const {NEXT, PREV} = require('../shared/symbols.js');
+const {CLONE, NEXT, PREV} = require('../shared/symbols.js');
 const {ignoreCase} = require('../shared/utils.js');
 const {outerHTML} = require('../shared/serialize-html.js');
 const {serializeXML} = require('../shared/serialize-xml.js');
@@ -115,6 +115,11 @@ class Node extends EventTarget {
     return document ? documentBaseURL(document) : null;
   }
 
+  // https://dom.spec.whatwg.org/#dom-node-clonenode
+  cloneNode(deep = false) {
+    return this[CLONE](this.ownerDocument, !!deep);
+  }
+
   /* c8 ignore start */
   // mixin: node
   get isConnected() { return false; }
@@ -134,7 +139,6 @@ class Node extends EventTarget {
   get textContent() { return null; }
   set textContent(value) {}
   normalize() {}
-  cloneNode() { return null; }
   contains() { return false; }
   /**
    * Inserts a node before a reference node as a child of this parent node.

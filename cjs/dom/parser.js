@@ -8,12 +8,16 @@ const {XMLDocument} = require('../xml/document.js');
 
 const PARSER_ERROR_NAMESPACE = 'http://www.mozilla.org/newlayout/xml/parsererror.xml';
 
+const supportedTypes = new Set([
+  'text/html', 'text/xml', 'application/xml', 'application/xhtml+xml', 'image/svg+xml'
+]);
+
 /**
  * @implements globalThis.DOMParser
  */
 class DOMParser {
 
-  /** @typedef {{ "text/html": HTMLDocument, "image/svg+xml": SVGDocument, "text/xml": XMLDocument }} MimeToDoc */
+  /** @typedef {{ "text/html": HTMLDocument, "image/svg+xml": SVGDocument, "text/xml": XMLDocument, "application/xml": XMLDocument, "application/xhtml+xml": XMLDocument }} MimeToDoc */
   /**
    * @template {keyof MimeToDoc} MIME
    * @param {string} markupLanguage
@@ -21,10 +25,13 @@ class DOMParser {
    * @returns {MimeToDoc[MIME]}
    */
   parseFromString(markupLanguage, mimeType, globals = null) {
-    const isHTML = mimeType === 'text/html';
+    const type = String(mimeType);
+    if (!supportedTypes.has(type))
+      throw new TypeError(`Failed to execute 'parseFromString' on 'DOMParser': parameter 2 '${type}' is not a valid enumeration value for SupportedType`);
+    const isHTML = type === 'text/html';
     const create = () => {
       const document = isHTML ? new HTMLDocument : (
-        mimeType === 'image/svg+xml' ? new SVGDocument : new XMLDocument
+        type === 'image/svg+xml' ? new SVGDocument : new XMLDocument(type)
       );
       document[DOM_PARSER] = DOMParser;
       if (globals)

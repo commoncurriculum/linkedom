@@ -20,7 +20,9 @@ export class CharacterData extends Node implements globalThis.CharacterData {
     deleteData(offset: any, count: any): void;
     replaceData(offset: any, count: any, data: any): void;
     toJSON(): any[];
+    [CLONE](document: any): any;
     [VALUE]: string;
 }
 import { Node } from './node.js';
+import { CLONE } from '../shared/symbols.js';
 import { VALUE } from '../shared/symbols.js';

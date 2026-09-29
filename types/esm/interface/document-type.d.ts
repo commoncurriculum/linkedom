@@ -6,7 +6,8 @@ export class DocumentType extends Node implements globalThis.DocumentType {
     name: any;
     publicId: string;
     systemId: string;
-    cloneNode(): DocumentType;
     toJSON(): any[];
+    [CLONE](document: any): DocumentType;
 }
 import { Node } from './node.js';
+import { CLONE } from '../shared/symbols.js';

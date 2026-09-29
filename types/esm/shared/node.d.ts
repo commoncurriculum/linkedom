@@ -6,7 +6,7 @@ export function parentElement({ parentNode }: {
     parentNode: any;
 }): any;
 export function previousSibling({ [PREV]: prev }: {
-    "__@PREV@24215": any;
+    "__@PREV@24216": any;
 }): any;
 export function nextSibling(node: any): any;
 import { PREV } from './symbols.js';

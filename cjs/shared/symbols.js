@@ -15,6 +15,10 @@ exports.CUSTOM_ELEMENTS = CUSTOM_ELEMENTS;
 const CONTENT = Symbol('content');
 exports.CONTENT = CONTENT;
 
+// used by every node to clone itself into a given document
+const CLONE = Symbol('clone');
+exports.CLONE = CLONE;
+
 // used in Element for data attributes
 const DATASET = Symbol('dataset');
 exports.DATASET = DATASET;
@@ -94,6 +98,10 @@ exports.SHEET = SHEET;
 // used to define start node reference
 const START = Symbol('start');
 exports.START = START;
+
+// used in Document for the document its template contents belong to
+const TEMPLATE_DOCUMENT = Symbol('templateDocument');
+exports.TEMPLATE_DOCUMENT = TEMPLATE_DOCUMENT;
 
 // used to define special CSS style attribute
 const STYLE = Symbol('style');

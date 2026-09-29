@@ -13,11 +13,14 @@ const {
   HTML_NAMESPACE
 } = require('../shared/constants.js');
 
-const {PRIVATE, END, MIME, NEXT, PREFIX, PREV, START, VALUE} = require('../shared/symbols.js');
+const {
+  CONTENT, PRIVATE, END, MIME, NEXT, PREFIX, PREV, START, TEMPLATE_DOCUMENT, VALUE
+} = require('../shared/symbols.js');
 
 const {prepareMatch} = require('../shared/matches.js');
 const {asciiLowercase} = require('../shared/names.js');
 const {previousSibling, nextSibling} = require('../shared/node.js');
+const {shadowRoots} = require('../shared/shadow-roots.js');
 const {baseChanged} = require('../shared/url.js');
 const {getEnd, knownAdjacent, knownBoundaries, knownSegment, knownSiblings} = require('../shared/utils.js');
 
@@ -26,7 +29,7 @@ const {Text} = require('../interface/text.js');
 const {NodeList} = require('../interface/node-list.js');
 
 const {moCallback} = require('../interface/mutation-observer.js');
-const {connectedCallback} = require('../interface/custom-element-registry.js');
+const {adoptedCallback, connectedCallback} = require('../interface/custom-element-registry.js');
 
 const {nextElementSibling} = require('./non-document-type-child-node.js');
 
@@ -36,6 +39,26 @@ const isNode = node => node instanceof Node;
 const nodeArgument = (method, node) => {
   if (!isNode(node))
     throw new TypeError(`Failed to execute '${method}' on 'Node': parameter 1 is not of type 'Node'.`);
+};
+
+// https://dom.spec.whatwg.org/#concept-node-adopt
+const adopt = (node, document) => {
+  const oldDocument = node.ownerDocument;
+  const end = node.nodeType === DOCUMENT_FRAGMENT_NODE ? node[END] : getEnd(node);
+  for (let next = node; ; next = next[NEXT]) {
+    next.ownerDocument = document;
+    if (next.nodeType === ELEMENT_NODE) {
+      // https://html.spec.whatwg.org/multipage/scripting.html#template-adopting-steps
+      const content = next[CONTENT];
+      if (content && content.ownerDocument !== document[TEMPLATE_DOCUMENT])
+        adopt(content, document[TEMPLATE_DOCUMENT]);
+      if (shadowRoots.has(next))
+        adopt(shadowRoots.get(next).shadowRoot, document);
+      adoptedCallback(next, oldDocument, document);
+    }
+    if (next === end)
+      break;
+  }
 };
 
 const descendants = (root, matches) => {
@@ -48,6 +71,11 @@ const descendants = (root, matches) => {
   }
   return elements;
 };
+
+const asciiWhitespaces = /[\t\n\f\r ]+/;
+
+// https://dom.spec.whatwg.org/#concept-ordered-set-parser
+const orderedSet = value => [...new Set(value.split(asciiWhitespaces))].filter(Boolean);
 
 const qualify = ({[PREFIX]: prefix, localName}) => prefix ? `${prefix}:${localName}` : localName;
 
@@ -173,8 +201,13 @@ class ParentNode extends Node {
       insert(this, end, nodes);
   }
 
-  getElementsByClassName(className) {
-    return descendants(this, element => element.hasAttribute('class') && element.classList.has(className));
+  // https://dom.spec.whatwg.org/#concept-getelementsbyclassname
+  getElementsByClassName(classNames) {
+    const classes = orderedSet(String(classNames));
+    const hasClasses = ({classList}) => classes.every(token => classList.has(token));
+    return classes.length ?
+      descendants(this, element => element.hasAttribute('class') && hasClasses(element)) :
+      new NodeList;
   }
 
   // https://dom.spec.whatwg.org/#concept-getelementsbytagname
@@ -243,9 +276,12 @@ class ParentNode extends Node {
     if (node === this)
       throw new Error('unable to append a node to itself');
     const next = before || this[END];
+    const document = this.ownerDocument || this;
     switch (node.nodeType) {
       case ELEMENT_NODE:
         node.remove();
+        if (node.ownerDocument !== document)
+          adopt(node, document);
         node.parentNode = this;
         knownBoundaries(next[PREV], node, next);
         baseChanged(this);
@@ -261,6 +297,8 @@ class ParentNode extends Node {
           if (parentNode)
             parentNode.replaceChildren();
           do {
+            if (firstChild.ownerDocument !== document)
+              adopt(firstChild, document);
             firstChild.parentNode = this;
             moCallback(firstChild, null);
             if (firstChild.nodeType === ELEMENT_NODE)
@@ -279,6 +317,8 @@ class ParentNode extends Node {
       /* eslint no-fallthrough:0 */
       // this covers DOCUMENT_TYPE_NODE too
       default:
+        if (node.ownerDocument !== document)
+          adopt(node, document);
         node.parentNode = this;
         knownSiblings(next[PREV], node, next);
         moCallback(node, null);

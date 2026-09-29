@@ -1,6 +1,6 @@
 'use strict';
 const {ELEMENT_NODE} = require('./constants.js');
-const {END, MIME, NEXT, PREV} = require('./symbols.js');
+const {CLONE, END, MIME, NEXT, PREV} = require('./symbols.js');
 
 const $String = String;
 exports.String = $String;
@@ -58,6 +58,18 @@ const linkAttribute = (element, attribute, last = element[END][PREV]) => {
   knownSiblings(last, attribute, last[NEXT]);
 };
 exports.linkAttribute = linkAttribute;
+
+/**
+ * Links to parentNode a deep clone of each child of source, without running any insertion steps.
+ * @param {Node} source
+ * @param {Node} parentNode
+ * @param {Document} document the document the clones belong to
+ */
+const linkClones = (source, parentNode, document) => {
+  for (let child = source.firstChild; child; child = child.nextSibling)
+    linkNode(parentNode, child[CLONE](document, true));
+};
+exports.linkClones = linkClones;
 
 const setAdjacent = (prev, next) => {
   if (prev)

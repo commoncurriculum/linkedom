@@ -3,6 +3,8 @@ const childNodesWM = new WeakMap;
 exports.childNodesWM = childNodesWM;
 const childrenWM = new WeakMap;
 exports.childrenWM = childrenWM;
+const elementsByClassNameWM = new WeakMap;
+exports.elementsByClassNameWM = elementsByClassNameWM;
 const elementsByTagNameWM = new WeakMap;
 exports.elementsByTagNameWM = elementsByTagNameWM;
 const querySelectorWM = new WeakMap;
@@ -23,6 +25,7 @@ const reset = parentNode => {
   while (parentNode) {
     childNodesWM.delete(parentNode);
     childrenWM.delete(parentNode);
+    elementsByClassNameWM.delete(parentNode);
     elementsByTagNameWM.delete(parentNode);
     querySelectorWM.delete(parentNode);
     querySelectorAllWM.delete(parentNode);
