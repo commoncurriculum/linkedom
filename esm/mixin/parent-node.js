@@ -48,6 +48,11 @@ const descendants = (root, matches) => {
   return elements;
 };
 
+const asciiWhitespaces = /[\t\n\f\r ]+/;
+
+// https://dom.spec.whatwg.org/#concept-ordered-set-parser
+const orderedSet = value => [...new Set(value.split(asciiWhitespaces))].filter(Boolean);
+
 const qualify = ({[PREFIX]: prefix, localName}) => prefix ? `${prefix}:${localName}` : localName;
 
 const insert = (parentNode, child, nodes) => {
@@ -172,8 +177,13 @@ export class ParentNode extends Node {
       insert(this, end, nodes);
   }
 
-  getElementsByClassName(className) {
-    return descendants(this, element => element.hasAttribute('class') && element.classList.has(className));
+  // https://dom.spec.whatwg.org/#concept-getelementsbyclassname
+  getElementsByClassName(classNames) {
+    const classes = orderedSet(String(classNames));
+    const hasClasses = ({classList}) => classes.every(token => classList.has(token));
+    return classes.length ?
+      descendants(this, element => element.hasAttribute('class') && hasClasses(element)) :
+      new NodeList;
   }
 
   // https://dom.spec.whatwg.org/#concept-getelementsbytagname
