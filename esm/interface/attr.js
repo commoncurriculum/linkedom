@@ -1,5 +1,5 @@
 import {ATTRIBUTE_NODE, HTML_NAMESPACE} from '../shared/constants.js';
-import {VALUE} from '../shared/symbols.js';
+import {CLONE, VALUE} from '../shared/symbols.js';
 import {String, ignoreCase} from '../shared/utils.js';
 import {attrAsJSON} from '../shared/jsdon.js';
 import {attributeChanged} from '../shared/attributes.js';
@@ -43,9 +43,9 @@ export class Attr extends Node {
       attributeChanged(ownerElement, this, oldValue, this[VALUE]);
   }
 
-  cloneNode() {
-    const {ownerDocument, name, [VALUE]: value, namespaceURI, prefix, localName} = this;
-    return new Attr(ownerDocument, name, value, namespaceURI, prefix, localName);
+  [CLONE](document) {
+    const {name, [VALUE]: value, namespaceURI, prefix, localName} = this;
+    return new Attr(document, name, value, namespaceURI, prefix, localName);
   }
 
   toString() {

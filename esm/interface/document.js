@@ -1,10 +1,7 @@
-import {
-  DOCUMENT_NODE, DOCUMENT_FRAGMENT_NODE, DOCUMENT_TYPE_NODE, ELEMENT_NODE,
-  HTML_NAMESPACE
-} from '../shared/constants.js';
+import {DOCUMENT_NODE, DOCUMENT_TYPE_NODE, HTML_NAMESPACE} from '../shared/constants.js';
 
 import {
-  CUSTOM_ELEMENTS, DOM_PARSER, GLOBALS, IMAGE, MUTATION_OBSERVER, TEMPLATE_DOCUMENT,
+  CUSTOM_ELEMENTS, DOM_PARSER, GLOBALS, IMAGE, MUTATION_OBSERVER, MODE, CLONE, TEMPLATE_DOCUMENT,
   DOCTYPE, END, NEXT, MIME, EVENT_TARGET, UPGRADE, NAMESPACE, PREFIX, CREATE_ELEMENT
 } from '../shared/symbols.js';
 
@@ -38,6 +35,7 @@ import {MutationObserverClass} from './mutation-observer.js';
 import {NamedNodeMap} from './named-node-map.js';
 import {NodeList} from './node-list.js';
 import {Range} from './range.js';
+import {ShadowRoot} from './shadow-root.js';
 import {Text} from './text.js';
 import {TreeWalker} from './tree-walker.js';
 
@@ -271,21 +269,18 @@ export class Document extends NonElementParentNode {
     return event;
   }
 
-  cloneNode(deep = false) {
-    const {
-      constructor,
-      [CUSTOM_ELEMENTS]: customElements,
-      [DOCTYPE]: doctype
-    } = this;
-    const document = new constructor(this[MIME].type);
-    document[CUSTOM_ELEMENTS] = customElements;
+  [CLONE](_, deep) {
+    const document = new this.constructor(this[MIME].type);
+    document[CUSTOM_ELEMENTS] = this[CUSTOM_ELEMENTS];
+    document[DOM_PARSER] = this[DOM_PARSER];
+    document[MODE] = this[MODE];
     if (deep) {
-      const end = document[END];
-      const {childNodes} = this;
-      for (let {length} = childNodes, i = 0; i < length; i++)
-        document.insertBefore(childNodes[i].cloneNode(true), end);
-      if (doctype)
-        document[DOCTYPE] = childNodes[0];
+      for (const child of this.childNodes) {
+        const clone = child[CLONE](document, true);
+        if (clone.nodeType === DOCUMENT_TYPE_NODE)
+          document[DOCTYPE] = clone;
+        document.insertBefore(clone);
+      }
     }
     return document;
   }
@@ -294,31 +289,11 @@ export class Document extends NonElementParentNode {
     // important: keep the signature length as *one*
     // or it would behave like old IE or Edge with polyfills
     const deep = 1 < arguments.length && !!arguments[1];
-    const node = externalNode.cloneNode(deep);
-    const {[CUSTOM_ELEMENTS]: customElements} = this;
-    const {active} = customElements;
-    const upgrade = element => {
-      const {ownerDocument, nodeType} = element;
-      element.ownerDocument = this;
-      if (active && ownerDocument !== this && nodeType === ELEMENT_NODE)
-        customElements.upgrade(element);
-    };
-    upgrade(node);
-    if (deep) {
-      switch (node.nodeType) {
-        case ELEMENT_NODE:
-        case DOCUMENT_FRAGMENT_NODE: {
-          let {[NEXT]: next, [END]: end} = node;
-          while (next !== end) {
-            if (next.nodeType === ELEMENT_NODE)
-              upgrade(next);
-            next = next[NEXT];
-          }
-          break;
-        }
-      }
-    }
-    return node;
+    if (externalNode.nodeType === DOCUMENT_NODE)
+      throw new DOMException('Cannot import a document node', 'NotSupportedError');
+    if (externalNode instanceof ShadowRoot)
+      throw new DOMException('Cannot adopt a shadow root', 'NotSupportedError');
+    return externalNode[CLONE](this, deep);
   }
 
   toString() {
@@ -349,14 +324,14 @@ export class Document extends NonElementParentNode {
   }
 
   // https://dom.spec.whatwg.org/#concept-create-element
-  [CREATE_ELEMENT](namespace, localName, prefix = null, is = null) {
+  [CREATE_ELEMENT](namespace, localName, prefix = null, is = null, synchronous = true) {
     const Class = elementInterface(namespace, localName);
     const element = new Class(this, localName);
     if (Class === Element)
       element[NAMESPACE] = namespace;
     if (prefix)
       element[PREFIX] = prefix;
-    if (namespace === HTML_NAMESPACE && this[CUSTOM_ELEMENTS].active)
+    if (synchronous && namespace === HTML_NAMESPACE && this[CUSTOM_ELEMENTS].active)
       constructCustomElement(this, element, is);
     return element;
   }

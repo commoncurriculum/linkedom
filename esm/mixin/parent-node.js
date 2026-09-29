@@ -12,11 +12,14 @@ import {
   HTML_NAMESPACE
 } from '../shared/constants.js';
 
-import {PRIVATE, END, MIME, NEXT, PREFIX, PREV, START, VALUE} from '../shared/symbols.js';
+import {
+  CONTENT, PRIVATE, END, MIME, NEXT, PREFIX, PREV, START, TEMPLATE_DOCUMENT, VALUE
+} from '../shared/symbols.js';
 
 import {prepareMatch} from '../shared/matches.js';
 import {asciiLowercase} from '../shared/names.js';
 import {previousSibling, nextSibling} from '../shared/node.js';
+import {shadowRoots} from '../shared/shadow-roots.js';
 import {baseChanged} from '../shared/url.js';
 import {getEnd, knownAdjacent, knownBoundaries, knownSegment, knownSiblings} from '../shared/utils.js';
 
@@ -25,7 +28,7 @@ import {Text} from '../interface/text.js';
 import {NodeList} from '../interface/node-list.js';
 
 import {moCallback} from '../interface/mutation-observer.js';
-import {connectedCallback} from '../interface/custom-element-registry.js';
+import {adoptedCallback, connectedCallback} from '../interface/custom-element-registry.js';
 
 import {nextElementSibling} from './non-document-type-child-node.js';
 
@@ -35,6 +38,26 @@ const isNode = node => node instanceof Node;
 const nodeArgument = (method, node) => {
   if (!isNode(node))
     throw new TypeError(`Failed to execute '${method}' on 'Node': parameter 1 is not of type 'Node'.`);
+};
+
+// https://dom.spec.whatwg.org/#concept-node-adopt
+const adopt = (node, document) => {
+  const oldDocument = node.ownerDocument;
+  const end = node.nodeType === DOCUMENT_FRAGMENT_NODE ? node[END] : getEnd(node);
+  for (let next = node; ; next = next[NEXT]) {
+    next.ownerDocument = document;
+    if (next.nodeType === ELEMENT_NODE) {
+      // https://html.spec.whatwg.org/multipage/scripting.html#template-adopting-steps
+      const content = next[CONTENT];
+      if (content && content.ownerDocument !== document[TEMPLATE_DOCUMENT])
+        adopt(content, document[TEMPLATE_DOCUMENT]);
+      if (shadowRoots.has(next))
+        adopt(shadowRoots.get(next).shadowRoot, document);
+      adoptedCallback(next, oldDocument, document);
+    }
+    if (next === end)
+      break;
+  }
 };
 
 const descendants = (root, matches) => {
@@ -252,9 +275,12 @@ export class ParentNode extends Node {
     if (node === this)
       throw new Error('unable to append a node to itself');
     const next = before || this[END];
+    const document = this.ownerDocument || this;
     switch (node.nodeType) {
       case ELEMENT_NODE:
         node.remove();
+        if (node.ownerDocument !== document)
+          adopt(node, document);
         node.parentNode = this;
         knownBoundaries(next[PREV], node, next);
         baseChanged(this);
@@ -270,6 +296,8 @@ export class ParentNode extends Node {
           if (parentNode)
             parentNode.replaceChildren();
           do {
+            if (firstChild.ownerDocument !== document)
+              adopt(firstChild, document);
             firstChild.parentNode = this;
             moCallback(firstChild, null);
             if (firstChild.nodeType === ELEMENT_NODE)
@@ -288,6 +316,8 @@ export class ParentNode extends Node {
       /* eslint no-fallthrough:0 */
       // this covers DOCUMENT_TYPE_NODE too
       default:
+        if (node.ownerDocument !== document)
+          adopt(node, document);
         node.parentNode = this;
         knownSiblings(next[PREV], node, next);
         moCallback(node, null);

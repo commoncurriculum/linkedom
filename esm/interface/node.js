@@ -19,7 +19,7 @@ import {
   XMLNS_NAMESPACE
 } from '../shared/constants.js';
 
-import {NEXT, PREV} from '../shared/symbols.js';
+import {CLONE, NEXT, PREV} from '../shared/symbols.js';
 import {ignoreCase} from '../shared/utils.js';
 import {outerHTML} from '../shared/serialize-html.js';
 import {serializeXML} from '../shared/serialize-xml.js';
@@ -114,6 +114,11 @@ export class Node extends EventTarget {
     return document ? documentBaseURL(document) : null;
   }
 
+  // https://dom.spec.whatwg.org/#dom-node-clonenode
+  cloneNode(deep = false) {
+    return this[CLONE](this.ownerDocument, !!deep);
+  }
+
   /* c8 ignore start */
   // mixin: node
   get isConnected() { return false; }
@@ -133,7 +138,6 @@ export class Node extends EventTarget {
   get textContent() { return null; }
   set textContent(value) {}
   normalize() {}
-  cloneNode() { return null; }
   contains() { return false; }
   /**
    * Inserts a node before a reference node as a child of this parent node.

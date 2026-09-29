@@ -1,5 +1,5 @@
 import {ELEMENT_NODE} from './constants.js';
-import {END, MIME, NEXT, PREV} from './symbols.js';
+import {CLONE, END, MIME, NEXT, PREV} from './symbols.js';
 
 const $String = String;
 export {$String as String};
@@ -48,6 +48,17 @@ export const linkNode = (parentNode, node, next = parentNode[END]) => {
 export const linkAttribute = (element, attribute, last = element[END][PREV]) => {
   attribute.ownerElement = element;
   knownSiblings(last, attribute, last[NEXT]);
+};
+
+/**
+ * Links to parentNode a deep clone of each child of source, without running any insertion steps.
+ * @param {Node} source
+ * @param {Node} parentNode
+ * @param {Document} document the document the clones belong to
+ */
+export const linkClones = (source, parentNode, document) => {
+  for (let child = source.firstChild; child; child = child.nextSibling)
+    linkNode(parentNode, child[CLONE](document, true));
 };
 
 export const setAdjacent = (prev, next) => {

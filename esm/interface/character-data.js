@@ -1,6 +1,6 @@
 // https://dom.spec.whatwg.org/#interface-characterdata
 
-import {NEXT, PREV, VALUE} from '../shared/symbols.js';
+import {CLONE, NEXT, PREV, VALUE} from '../shared/symbols.js';
 import {String} from '../shared/utils.js';
 import {isConnected, parentElement, previousSibling, nextSibling} from '../shared/node.js';
 import {characterDataAsJSON} from '../shared/jsdon.js';
@@ -19,6 +19,10 @@ export class CharacterData extends Node {
   constructor(ownerDocument, localName, nodeType, data) {
     super(ownerDocument, localName, nodeType);
     this[VALUE] = String(data);
+  }
+
+  [CLONE](document) {
+    return new this.constructor(document, this[VALUE]);
   }
 
   // <Mixins>

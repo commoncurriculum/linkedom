@@ -10,6 +10,9 @@ export const CUSTOM_ELEMENTS = Symbol('CustomElements');
 // used in HTMLTemplateElement
 export const CONTENT = Symbol('content');
 
+// used by every node to clone itself into a given document
+export const CLONE = Symbol('clone');
+
 // used in Element for data attributes
 export const DATASET = Symbol('dataset');
 

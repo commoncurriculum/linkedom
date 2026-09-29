@@ -19,18 +19,22 @@ export const attributeChanged = (element, attribute, oldValue, value) => {
   ceAttributes(element, name, oldValue, value);
 };
 
+// https://dom.spec.whatwg.org/#concept-element-attributes-append
 export const setAttribute = (element, attribute) => {
   let last = element;
   while (last[NEXT].nodeType === ATTRIBUTE_NODE)
     last = last[NEXT];
   linkAttribute(element, attribute, last);
+  attribute.ownerDocument = element.ownerDocument;
   attributeChanged(element, attribute, null, attribute[VALUE]);
 };
 
+// https://dom.spec.whatwg.org/#concept-element-attributes-replace
 export const replaceAttribute = (element, previous, attribute) => {
   knownSiblings(previous[PREV], attribute, previous[NEXT]);
   previous.ownerElement = previous[PREV] = previous[NEXT] = null;
   attribute.ownerElement = element;
+  attribute.ownerDocument = element.ownerDocument;
   attributeChanged(element, attribute, previous[VALUE], attribute[VALUE]);
 };
 

@@ -2,9 +2,9 @@
 // Document, DocumentFragment
 
 import {ELEMENT_NODE} from '../shared/constants.js';
-import {END, NEXT} from '../shared/symbols.js';
+import {CLONE, END, NEXT} from '../shared/symbols.js';
 import {nonElementAsJSON} from '../shared/jsdon.js';
-import {ignoreCase} from '../shared/utils.js';
+import {ignoreCase, linkClones} from '../shared/utils.js';
 import {innerHTML} from '../shared/serialize-html.js';
 import {serializeXML} from '../shared/serialize-xml.js';
 
@@ -21,15 +21,11 @@ export class NonElementParentNode extends ParentNode {
     return null;
   }
 
-  cloneNode(deep) {
-    const {ownerDocument, constructor} = this;
-    const nonEPN = new constructor(ownerDocument);
-    if (deep) {
-      const {[END]: end} = nonEPN;
-      for (const node of this.childNodes)
-        nonEPN.insertBefore(node.cloneNode(deep), end);
-    }
-    return nonEPN; 
+  [CLONE](document, deep) {
+    const clone = new this.constructor(document);
+    if (deep)
+      linkClones(this, clone, document);
+    return clone;
   }
 
   toString() {
