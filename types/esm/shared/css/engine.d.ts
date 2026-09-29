@@ -1,4 +1,8 @@
 /**
+ * @returns {string}
+ */
+export function engine(): string;
+/**
  * @returns {string[]}
  */
 export function propertyNames(): string[];
@@ -23,6 +27,10 @@ export class Declarations {
      * @returns {number}
      */
     get length(): number;
+    /**
+     * @returns {string[]}
+     */
+    names(): string[];
     /**
      * @param {string} name
      * @returns {string}

@@ -9,13 +9,13 @@ export class CSSStyleDeclaration implements globalThis.CSSStyleDeclaration {
     get parentRule(): any;
     set cssFloat(value: string);
     get cssFloat(): string;
-    item(index: any): string;
+    item(index: any): any;
     getPropertyValue(property: any): string;
     getPropertyPriority(property: any): string;
     setProperty(property: any, value: any, priority?: string): void;
     removeProperty(property: any): string;
     [RESET](value: any): void;
-    [Symbol.iterator](): Generator<string, void, unknown>;
+    [Symbol.iterator](): Generator<any, void, unknown>;
     get [Symbol.toStringTag](): string;
     [ELEMENT]: any;
     [DECLARATIONS]: Declarations;
