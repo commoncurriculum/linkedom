@@ -5,7 +5,7 @@ const {parseHTML} = global[Symbol.for('linkedom')];
 const {document} = parseHTML('<html><p>b</p><p>c</p><p>d</p></html>');
 
 let node = document.createDocumentFragment();
-node.append(...document.documentElement.childNodes);
+node.append(...document.body.childNodes);
 
 let treeWalker = document.createTreeWalker(node);
 assert(treeWalker.nextNode(), node.childNodes[0], 'first treeWalker');

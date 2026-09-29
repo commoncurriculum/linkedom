@@ -18,37 +18,37 @@ const { head } = document;
 head.innerHTML = `<nope csp-hash="any">"</nope>`;
 assert(
   document.toString(),
-  '<!DOCTYPE html><html><head><nope csp-hash="any">"</nope></head></html>',
+  '<!DOCTYPE html><html><head><nope csp-hash="any">"</nope></head><body></body></html>',
   'Issue #1 - <nope> node'
 );
 head.innerHTML = `<div csp-hash="any">"</div>`;
 assert(
   document.toString(),
-  '<!DOCTYPE html><html><head><div csp-hash="any">"</div></head></html>',
+  '<!DOCTYPE html><html><head><div csp-hash="any">"</div></head><body></body></html>',
   'Issue #1 - <div> node'
 );
 head.innerHTML = `<title csp-hash="any">"</title>`;
 assert(
   document.toString(),
-  '<!DOCTYPE html><html><head><title csp-hash="any">"</title></head></html>',
+  '<!DOCTYPE html><html><head><title csp-hash="any">"</title></head><body></body></html>',
   'Issue #1 - <title> node'
 );
 head.innerHTML = `<style csp-hash="any">"</style>`;
 assert(
   document.toString(),
-  '<!DOCTYPE html><html><head><style csp-hash="any">"</style></head></html>',
+  '<!DOCTYPE html><html><head><style csp-hash="any">"</style></head><body></body></html>',
   'Issue #1 - <style> node'
 );
 head.innerHTML = `<script csp-hash="any">"</script>`;
 assert(
   document.toString(),
-  '<!DOCTYPE html><html><head><script csp-hash="any">"</script></head></html>',
+  '<!DOCTYPE html><html><head><script csp-hash="any">"</script></head><body></body></html>',
   'Issue #1 - <script> node'
 );
 head.innerHTML = `<textarea csp-hash="any">"</textarea>`;
 assert(
   document.toString(),
-  '<!DOCTYPE html><html><head><textarea csp-hash="any">"</textarea></head></html>',
+  '<!DOCTYPE html><html><head><textarea csp-hash="any">"</textarea></head><body></body></html>',
   'Issue #1 - <textarea> node'
 );
 
@@ -56,7 +56,7 @@ head.innerHTML = `<script type="application/ld+json">{}</script>`;
 head.querySelector('script').textContent = `{"change": true}`;
 assert(
   document.toString(),
-  '<!DOCTYPE html><html><head><script type="application/ld+json">{"change": true}</script></head></html>',
+  '<!DOCTYPE html><html><head><script type="application/ld+json">{"change": true}</script></head><body></body></html>',
   'Issue #9 - <script> node'
 );
 
@@ -64,7 +64,7 @@ head.innerHTML = `<script type="application/ld+json">{}</script>`;
 head.querySelector("script").text = `{"change": true}`;
 assert(
   document.toString(),
-  '<!DOCTYPE html><html><head><script type="application/ld+json">{"change": true}</script></head></html>'
+  '<!DOCTYPE html><html><head><script type="application/ld+json">{"change": true}</script></head><body></body></html>'
 );
 assert(
   head.querySelector("script").text,
@@ -107,7 +107,7 @@ assert(head.firstChild.innerHTML, 'html`<p>ok</p>`;', '<script>.innerHTML');
     '<html><script src="./main.js" type="module" nonce="111" async defer crossorigin="anonymous" nomodule referrerpolicy="no-referrer"/></html>'
   );
 
-  const { firstElementChild: script } = document.documentElement;
+  const { firstElementChild: script } = document.head;
 
   assert(script.src, `./main.js`, '<script>.src');
 
@@ -120,7 +120,7 @@ assert(head.firstChild.innerHTML, 'html`<p>ok</p>`;', '<script>.innerHTML');
   assert(script.referrerPolicy, `no-referrer`, '<script>.referrerpolicy');
   assert(
     script.toString(),
-    `<script src="./main.js" type="module" nonce="111" async defer crossorigin="anonymous" nomodule referrerpolicy="no-referrer"></script>`
+    `<script src="./main.js" type="module" nonce="111" async="" defer="" crossorigin="anonymous" nomodule="" referrerpolicy="no-referrer"></html></script>`
   );
 
   script.nonce = '222';
@@ -147,10 +147,10 @@ assert(head.firstChild.innerHTML, 'html`<p>ok</p>`;', '<script>.innerHTML');
   const script = document.createElement('script')
   script.innerHTML = 'const test = "$$ $& $1"'
   document.head.append(script)
-  assert(document.toString(), '<html><head><script>const test = "$$ $& $1"</script></head></html>')
+  assert(document.toString(), '<html><head><script>const test = "$$ $& $1"</script></head><body></body></html>')
 }
 
 {
   const { document } = parseHTML('<html><script>const test = "$$ $& $1"</script></html>');
-  assert(document.toString(), '<html><script>const test = "$$ $& $1"</script></html>')
+  assert(document.toString(), '<html><head><script>const test = "$$ $& $1"</script></head><body></body></html>')
 }

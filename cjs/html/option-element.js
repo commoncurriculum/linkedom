@@ -1,9 +1,46 @@
 'use strict';
 const {HTMLElement} = require('./element.js');
-const {booleanAttribute, stringAttribute} = require('../shared/attributes.js');
-const {registerHTMLClass} = require('../shared/register-html-class.js');
+const {booleanAttribute} = require('../shared/attributes.js');
 
 const tagName = 'option';
+
+// https://html.spec.whatwg.org/multipage/form-elements.html#concept-option-selectedness
+// The selected attribute is only the default; once set, selectedness is the option's own.
+const SELECTEDNESS = Symbol('selectedness');
+
+const asciiWhitespace = /[\t\n\f\r ]+/g;
+
+const selectOf = ({parentElement}) => {
+  if (parentElement && parentElement.localName === 'optgroup')
+    parentElement = parentElement.parentElement;
+  return parentElement && parentElement.localName === 'select' ? parentElement : null;
+};
+
+const selectedness = option => option[SELECTEDNESS] ?? option.hasAttribute('selected');
+
+// https://html.spec.whatwg.org/multipage/form-elements.html#concept-option-disabled
+const disabled = option => {
+  const {parentElement} = option;
+  return option.hasAttribute('disabled') || (
+    parentElement.localName === 'optgroup' && parentElement.hasAttribute('disabled')
+  );
+};
+
+/**
+ * https://html.spec.whatwg.org/multipage/form-elements.html#selectedness-setting-algorithm
+ * @param {HTMLSelectElement} select a select without the multiple attribute
+ */
+const selectedOption = select => {
+  let selected = null, enabled = null;
+  for (const option of select.options) {
+    if (selectedness(option))
+      selected = option;
+    else if (!enabled && !disabled(option))
+      enabled = option;
+  }
+  return selected || enabled;
+};
+exports.selectedOption = selectedOption;
 
 /**
  * @implements globalThis.HTMLOptionElement
@@ -11,22 +48,36 @@ const tagName = 'option';
 class HTMLOptionElement extends HTMLElement {
   constructor(ownerDocument, localName = tagName) {
     super(ownerDocument, localName);
+    this[SELECTEDNESS] = null;
   }
 
-  /* c8 ignore start */
-  get value() { return stringAttribute.get(this, 'value'); }
-  set value(value) { stringAttribute.set(this, 'value', value); }
-  /* c8 ignore stop */
+  get value() {
+    const value = this.getAttribute('value');
+    return value === null ? this.text : value;
+  }
+  set value(value) { this.setAttribute('value', value); }
 
-  get selected() { return booleanAttribute.get(this, 'selected'); }
+  get text() {
+    return this.textContent.replace(asciiWhitespace, ' ').trim();
+  }
+
+  get defaultSelected() { return booleanAttribute.get(this, 'selected'); }
+  set defaultSelected(value) { booleanAttribute.set(this, 'selected', value); }
+
+  get selected() {
+    const select = selectOf(this);
+    return select && !select.multiple ? selectedOption(select) === this : selectedness(this);
+  }
   set selected(value) {
-    const option = this.parentElement?.querySelector('option[selected]');
-    if (option && option !== this)
-      option.selected = false;
-    booleanAttribute.set(this, 'selected', value);
+    this[SELECTEDNESS] = !!value;
+    const select = selectOf(this);
+    if (value && select && !select.multiple) {
+      for (const option of select.options) {
+        if (option !== this)
+          option[SELECTEDNESS] = false;
+      }
+    }
   }
 }
-
-registerHTMLClass(tagName, HTMLOptionElement);
 
 exports.HTMLOptionElement = HTMLOptionElement;

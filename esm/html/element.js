@@ -1,9 +1,11 @@
+import {HTML_NAMESPACE} from '../shared/constants.js';
 import {END, UPGRADE} from '../shared/symbols.js';
 import {booleanAttribute, stringAttribute} from '../shared/attributes.js';
 
 import {Event} from '../interface/event.js';
-import {Element} from '../interface/element.js';
 import {Classes, customElements} from '../interface/custom-element-registry.js';
+
+import {ElementCSSInlineStyle} from '../mixin/element-css-inline-style.js';
 
 const Level0 = new WeakMap;
 const level0 = {
@@ -25,7 +27,7 @@ const level0 = {
 /**
  * @implements globalThis.HTMLElement
  */
-export class HTMLElement extends Element {
+export class HTMLElement extends ElementCSSInlineStyle {
 
   static get observedAttributes() { return []; }
 
@@ -58,6 +60,8 @@ export class HTMLElement extends Element {
         this.setAttribute('is', options.is);
     }
   }
+
+  get namespaceURI() { return HTML_NAMESPACE; }
 
   /* c8 ignore start */
 

@@ -5,19 +5,18 @@ export class HTMLDocument extends Document implements globalThis.HTMLDocument {
     constructor();
     get all(): NodeList;
     /**
-     * @type HTMLHeadElement
+     * @type HTMLHeadElement?
      */
     get head(): HTMLHeadElement;
     /**
-     * @type HTMLBodyElement
+     * @type HTMLBodyElement?
      */
     get body(): HTMLBodyElement;
-    set title(textContent: HTMLTitleElement);
+    set title(textContent: string);
     /**
-     * @type HTMLTitleElement
+     * @type string
      */
-    get title(): HTMLTitleElement;
-    createElement(localName: any, options: any): any;
+    get title(): string;
 }
 import { Document } from '../interface/document.js';
 import { NodeList } from '../interface/node-list.js';

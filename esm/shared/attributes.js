@@ -1,62 +1,47 @@
-import {CLASS_LIST, NEXT, PREV, VALUE} from './symbols.js';
+import {ATTRIBUTE_NODE} from './constants.js';
+import {ATTRIBUTE_CHANGED, NEXT, PREV, VALUE} from './symbols.js';
 
-import {knownAdjacent, knownSiblings} from './utils.js';
+import {knownAdjacent, knownSiblings, linkAttribute} from './utils.js';
 
 import {attributeChangedCallback as ceAttributes} from '../interface/custom-element-registry.js';
 import {attributeChangedCallback as moAttributes} from '../interface/mutation-observer.js';
 
-export const emptyAttributes = new Set([
-  'allowfullscreen',
-  'allowpaymentrequest',
-  'async',
-  'autofocus',
-  'autoplay',
-  'checked',
-  'class',
-  'contenteditable',
-  'controls',
-  'default',
-  'defer',
-  'disabled',
-  'draggable',
-  'formnovalidate',
-  'hidden',
-  'id',
-  'ismap',
-  'itemscope',
-  'loop',
-  'multiple',
-  'muted',
-  'nomodule',
-  'novalidate',
-  'open',
-  'playsinline',
-  'readonly',
-  'required',
-  'reversed',
-  'selected',
-  'style',
-  'truespeed'
-]);
+/**
+ * @param {Element} element
+ * @param {Attr} attribute the attribute that was set, changed or removed
+ * @param {string?} oldValue
+ * @param {string?} value null once removed
+ */
+export const attributeChanged = (element, attribute, oldValue, value) => {
+  const {name} = attribute;
+  element[ATTRIBUTE_CHANGED](attribute, value);
+  moAttributes(element, name, oldValue);
+  ceAttributes(element, name, oldValue, value);
+};
 
+// https://dom.spec.whatwg.org/#concept-element-attributes-append
 export const setAttribute = (element, attribute) => {
-  const {[VALUE]: value, name} = attribute;
+  let last = element;
+  while (last[NEXT].nodeType === ATTRIBUTE_NODE)
+    last = last[NEXT];
+  linkAttribute(element, attribute, last);
+  attribute.ownerDocument = element.ownerDocument;
+  attributeChanged(element, attribute, null, attribute[VALUE]);
+};
+
+// https://dom.spec.whatwg.org/#concept-element-attributes-replace
+export const replaceAttribute = (element, previous, attribute) => {
+  knownSiblings(previous[PREV], attribute, previous[NEXT]);
+  previous.ownerElement = previous[PREV] = previous[NEXT] = null;
   attribute.ownerElement = element;
-  knownSiblings(element, attribute, element[NEXT]);
-  if (name === 'class')
-    element.className = value;
-  moAttributes(element, name, null);
-  ceAttributes(element, name, null, value);
+  attribute.ownerDocument = element.ownerDocument;
+  attributeChanged(element, attribute, previous[VALUE], attribute[VALUE]);
 };
 
 export const removeAttribute = (element, attribute) => {
-  const {[VALUE]: value, name} = attribute;
   knownAdjacent(attribute[PREV], attribute[NEXT]);
   attribute.ownerElement = attribute[PREV] = attribute[NEXT] = null;
-  if (name === 'class')
-    element[CLASS_LIST] = null;
-  moAttributes(element, name, value);
-  ceAttributes(element, name, value, null);
+  attributeChanged(element, attribute, attribute[VALUE], null);
 };
 
 export const booleanAttribute = {

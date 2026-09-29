@@ -24,7 +24,7 @@ assert(attributes.setNamedItem(attr), void 0, 'setNamedItem');
 const parseXML = xmlStr => new DOMParser().parseFromString(xmlStr, 'text/xml');
 const xmlDoc = parseXML('<element attr="a&quot;b&quot;c"></element>');
 
-assert(xmlDoc.toString(), '<?xml version="1.0" encoding="utf-8"?><element attr="a&quot;b&quot;c" />');
-assert(xmlDoc.firstElementChild.toString(), '<element attr="a&quot;b&quot;c" />');
-assert(xmlDoc.firstElementChild.outerHTML, '<element attr="a&quot;b&quot;c" />');
+assert(xmlDoc.toString(), '<?xml version="1.0" encoding="utf-8"?><element attr="a&quot;b&quot;c"/>');
+assert(xmlDoc.firstElementChild.toString(), '<element attr="a&quot;b&quot;c"/>');
+assert(xmlDoc.firstElementChild.outerHTML, '<element attr="a&quot;b&quot;c"/>');
 assert(xmlDoc.firstElementChild.attributes.attr.value, 'a"b"c');

@@ -1,35 +1,27 @@
 export const Mime: {
     'text/html': {
+        type: string;
         docType: string;
         ignoreCase: boolean;
-        voidElements: RegExp;
     };
     'image/svg+xml': {
+        type: any;
         docType: string;
         ignoreCase: boolean;
-        voidElements: {
-            test: () => boolean;
-        };
     };
     'text/xml': {
+        type: any;
         docType: string;
         ignoreCase: boolean;
-        voidElements: {
-            test: () => boolean;
-        };
     };
     'application/xml': {
+        type: any;
         docType: string;
         ignoreCase: boolean;
-        voidElements: {
-            test: () => boolean;
-        };
     };
     'application/xhtml+xml': {
+        type: any;
         docType: string;
         ignoreCase: boolean;
-        voidElements: {
-            test: () => boolean;
-        };
     };
 };

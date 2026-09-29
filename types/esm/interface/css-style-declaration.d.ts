@@ -1,19 +1,32 @@
 /**
  * @implements globalThis.CSSStyleDeclaration
  */
-export class CSSStyleDeclaration extends Map<any, any> implements globalThis.CSSStyleDeclaration {
+export class CSSStyleDeclaration implements globalThis.CSSStyleDeclaration {
     constructor(element: any);
     set cssText(value: string);
     get cssText(): string;
-    getPropertyValue(name: any): any;
-    setProperty(name: any, value: any): void;
-    removeProperty(name: any): void;
-    [Symbol.iterator](): {
-        next(): {
-            done: boolean;
-            value: any;
-        };
-    };
-    get [PRIVATE](): this;
+    get length(): number;
+    get parentRule(): any;
+    set cssFloat(value: string);
+    get cssFloat(): string;
+    item(index: any): any;
+    getPropertyValue(property: any): string;
+    getPropertyPriority(property: any): string;
+    setProperty(property: any, value: any, priority?: string): void;
+    removeProperty(property: any): string;
+    [RESET](value: any): void;
+    [Symbol.iterator](): Generator<any, void, unknown>;
+    get [Symbol.toStringTag](): string;
+    [ELEMENT]: any;
+    [DECLARATIONS]: Declarations;
+    [TEXT]: any;
+    [INDICES]: number;
 }
-import { PRIVATE } from '../shared/symbols.js';
+export function styleOf(element: Element): CSSStyleDeclaration;
+import { RESET } from '../shared/symbols.js';
+declare const ELEMENT: unique symbol;
+declare const DECLARATIONS: unique symbol;
+import { Declarations } from '../shared/css/engine.js';
+declare const TEXT: unique symbol;
+declare const INDICES: unique symbol;
+export {};

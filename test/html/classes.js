@@ -1,11 +1,11 @@
 const assert = require('../assert.js').for('HTMLClassElement');
 
 const {parseHTML} = global[Symbol.for('linkedom')];
-const {MIME} = require('../../cjs/shared/symbols.js');
 
 const {document} = parseHTML('');
 
-const {voidElements} = document[MIME];
+// https://html.spec.whatwg.org/multipage/parsing.html#serialising-html-fragments
+const voidElements = /^(?:area|base|basefont|bgsound|br|col|embed|frame|hr|img|input|keygen|link|meta|param|source|track|wbr)$/;
 
 const {
   HTMLElement,

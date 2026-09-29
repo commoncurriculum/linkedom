@@ -5,6 +5,7 @@ import {ELEMENT_NODE} from '../shared/constants.js';
 import {NEXT, PREV} from '../shared/symbols.js';
 
 import {getEnd, setAdjacent} from '../shared/utils.js';
+import {baseChanged} from '../shared/url.js';
 
 import {moCallback} from '../interface/mutation-observer.js';
 import {disconnectedCallback} from '../interface/custom-element-registry.js';
@@ -56,7 +57,9 @@ export const remove = (prev, current, next) => {
   if (parentNode) {
     current.parentNode = null;
     moCallback(current, parentNode);
-    if (nodeType === ELEMENT_NODE)
+    if (nodeType === ELEMENT_NODE) {
+      baseChanged(parentNode);
       disconnectedCallback(current);
+    }
   }
 };

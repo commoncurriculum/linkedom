@@ -1,8 +1,8 @@
 'use strict';
 const {DOCUMENT_FRAGMENT_NODE} = require('./shared/constants.js');
+const {ATTRIBUTE_CHANGED} = require('./shared/symbols.js');
 const {defineProperties, getOwnPropertyDescriptors} = require('./shared/object.js');
 
-const {Attr} = require('./interface/attr.js');
 const {CharacterData} = require('./interface/character-data.js');
 const {Element} = require('./interface/element.js');
 
@@ -13,28 +13,13 @@ const {HTMLDocument} = require('./html/document.js');
 const {
   childNodesWM,
   childrenWM,
+  elementsByClassNameWM,
+  elementsByTagNameWM,
   querySelectorWM,
   querySelectorAllWM,
   get,
   reset
 } = require('./shared/cache.js');
-
-// Attr
-const {value: {
-  get: getAttributeValue,
-  set: setAttributeValue
-}} = getOwnPropertyDescriptors(Attr.prototype);
-
-defineProperties(Attr.prototype, {
-  value: {
-    get: getAttributeValue,
-    set(value) {
-      reset(this.ownerElement);
-      setAttributeValue.call(this, value);
-    }
-  }
-});
-
 
 // CharacterData
 // TODO: is txtContent really necessary to patch here?
@@ -48,26 +33,20 @@ defineProperties(CharacterData.prototype, {
 
 
 // Element
-const elementProtoDescriptors = {};
-for (const name of [
-  'remove',
-  'setAttribute',
-  'setAttributeNS',
-  'setAttributeNode',
-  'setAttributeNodeNS',
-  'removeAttribute',
-  'removeAttributeNS',
-  'removeAttributeNode'
-]) {
-  const method = Element.prototype[name];
-  elementProtoDescriptors[name] = {
-    value() {
-      reset(this.parentNode);
-      return method.apply(this, arguments);
-    }
-  };
-}
-defineProperties(Element.prototype, elementProtoDescriptors);
+const {
+  remove: removeElement,
+  [ATTRIBUTE_CHANGED]: attributeChanged
+} = Element.prototype;
+defineProperties(Element.prototype, {
+  remove: {value() {
+    reset(this.parentNode);
+    removeElement.call(this);
+  }},
+  [ATTRIBUTE_CHANGED]: {value(attribute, value) {
+    reset(this);
+    attributeChanged.call(this, attribute, value);
+  }}
+});
 
 
 // ParentNode
@@ -86,6 +65,8 @@ defineProperties(ParentNode.prototype, {
 });
 
 const {
+  getElementsByClassName,
+  getElementsByTagName,
   insertBefore,
   querySelector,
   querySelectorAll
@@ -109,11 +90,11 @@ defineProperties(ParentNode.prototype, {
       reset(node);
     return insertBefore.call(this, node, before);
   }},
-  getElementsByClassName: {value(className) {
-    return this.querySelectorAll('.' + className);
+  getElementsByClassName: {value(classNames) {
+    return query(elementsByClassNameWM, getElementsByClassName, this, classNames);
   }},
-  getElementsByTagName: {value(tagName) {
-    return this.querySelectorAll(tagName);
+  getElementsByTagName: {value(qualifiedName) {
+    return query(elementsByTagNameWM, getElementsByTagName, this, qualifiedName);
   }},
   querySelector: {value(selectors) {
     return query(querySelectorWM, querySelector, this, selectors);

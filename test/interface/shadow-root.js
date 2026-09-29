@@ -4,18 +4,18 @@ const {parseHTML} = global[Symbol.for('linkedom')];
 
 const {document} = parseHTML('<!doctype html><html />');
 
-const {documentElement} = document;
+const {body} = document;
 
-assert(documentElement.shadowRoot, null, 'no shadowRoot');
+assert(body.shadowRoot, null, 'no shadowRoot');
 
-const shadowRoot = documentElement.attachShadow({mode: 'open'});
+const shadowRoot = body.attachShadow({mode: 'open'});
 
-assert(documentElement.shadowRoot, shadowRoot, 'yes shadowRoot');
+assert(body.shadowRoot, shadowRoot, 'yes shadowRoot');
 
-assert(documentElement.shadowRoot.host, documentElement, 'yes shadowRoot.host');
+assert(body.shadowRoot.host, body, 'yes shadowRoot.host');
 
 try {
-  documentElement.attachShadow({mode: 'open'});
+  body.attachShadow({mode: 'open'});
   assert(true, false, 'double shadowRoot should not be possible');
 } catch (ok) {}
 

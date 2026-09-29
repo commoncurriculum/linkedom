@@ -1,4 +1,5 @@
 import {DOCUMENT_FRAGMENT_NODE} from '../shared/constants.js';
+import {CLONE} from '../shared/symbols.js';
 import {getInnerHtml, setInnerHtml} from '../mixin/inner-html.js';
 import {NonElementParentNode} from '../mixin/non-element-parent-node.js';
 
@@ -16,5 +17,9 @@ export class ShadowRoot extends NonElementParentNode {
   }
   set innerHTML(html) {
     setInnerHtml(this, html);
+  }
+
+  [CLONE]() {
+    throw new DOMException('ShadowRoot nodes are not clonable.', 'NotSupportedError');
   }
 }

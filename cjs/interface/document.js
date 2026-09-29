@@ -1,25 +1,29 @@
 'use strict';
-const {DOCUMENT_NODE, DOCUMENT_FRAGMENT_NODE, DOCUMENT_TYPE_NODE, ELEMENT_NODE, SVG_NAMESPACE} = require('../shared/constants.js');
+const {DOCUMENT_NODE, DOCUMENT_TYPE_NODE, HTML_NAMESPACE} = require('../shared/constants.js');
 
 const {
-  CUSTOM_ELEMENTS, DOM_PARSER, GLOBALS, IMAGE, MUTATION_OBSERVER, DOCTYPE, END, NEXT, MIME, EVENT_TARGET, UPGRADE
+  CUSTOM_ELEMENTS, DOM_PARSER, GLOBALS, IMAGE, MUTATION_OBSERVER, MODE, CLONE, TEMPLATE_DOCUMENT, DOCTYPE, END, NEXT, MIME, EVENT_TARGET, UPGRADE, NAMESPACE, PREFIX, CREATE_ELEMENT
 } = require('../shared/symbols.js');
 
+const {hasBrowsingContext, withoutBrowsingContext} = require('../shared/browsing-context.js');
 const {Facades, illegalConstructor} = require('../shared/facades.js');
 const {HTMLClasses} = require('../shared/html-classes.js');
+const {elementInterface} = require('../shared/element-interface.js');
+const {asciiLowercase, validAttributeName, validElementName, validateAndExtract} = require('../shared/names.js');
 const {Mime} = require('../shared/mime.js');
 const {knownSiblings} = require('../shared/utils.js');
 const {assign, create, defineProperties, setPrototypeOf} = require('../shared/object.js');
+const {innerHTML} = require('../shared/serialize-html.js');
+const {serializeXML} = require('../shared/serialize-xml.js');
 
 const {NonElementParentNode} = require('../mixin/non-element-parent-node.js');
-
-const {SVGElement} = require('../svg/element.js');
 
 const {Attr} = require('./attr.js');
 const {CDATASection} = require('./cdata-section.js')
 const {Comment} = require('./comment.js');
-const {CustomElementRegistry} = require('./custom-element-registry.js');
+const {CustomElementRegistry, constructCustomElement} = require('./custom-element-registry.js');
 const {CustomEvent} = require('./custom-event.js');
+const {DOMImplementation} = require('./dom-implementation.js');
 const {DocumentFragment} = require('./document-fragment.js');
 const {DocumentType} = require('./document-type.js');
 const {Element} = require('./element.js');
@@ -31,6 +35,7 @@ const {MutationObserverClass} = require('./mutation-observer.js');
 const {NamedNodeMap} = require('./named-node-map.js');
 const {NodeList} = require('./node-list.js');
 const {Range} = require('./range.js');
+const {ShadowRoot} = require('./shadow-root.js');
 const {Text} = require('./text.js');
 const {TreeWalker} = require('./tree-walker.js');
 
@@ -55,6 +60,19 @@ const globalExports = assign(
 
 const window = new WeakMap;
 
+const implementations = new WeakMap;
+
+// The window's event target, which ends every event path through the document.
+const windowTarget = document => {
+  if (!document[EVENT_TARGET]) {
+    const et = document[EVENT_TARGET] = new EventTarget;
+    et.dispatchEvent = et.dispatchEvent.bind(et);
+    et.addEventListener = et.addEventListener.bind(et);
+    et.removeEventListener = et.removeEventListener.bind(et);
+  }
+  return document[EVENT_TARGET];
+};
+
 /**
  * @implements globalThis.Document
  */
@@ -73,9 +91,27 @@ class Document extends NonElementParentNode {
   }
 
   /**
+   * @type {string}
+   */
+  get contentType() {
+    return this[MIME].type;
+  }
+
+  /**
+   * @type {DOMImplementation}
+   */
+  get implementation() {
+    if (!implementations.has(this))
+      implementations.set(this, new DOMImplementation(this));
+    return implementations.get(this);
+  }
+
+  /**
    * @type {globalThis.Document['defaultView']}
    */
   get defaultView() {
+    if (!hasBrowsingContext(this))
+      return null;
     if (!window.has(this))
       window.set(this, new Proxy(globalThis, {
         set: (target, name, value) => {
@@ -83,7 +119,7 @@ class Document extends NonElementParentNode {
             case 'addEventListener':
             case 'removeEventListener':
             case 'dispatchEvent':
-              this[EVENT_TARGET][name] = value;
+              windowTarget(this)[name] = value;
               break;
             default:
               target[name] = value;
@@ -96,13 +132,7 @@ class Document extends NonElementParentNode {
             case 'addEventListener':
             case 'removeEventListener':
             case 'dispatchEvent':
-              if (!this[EVENT_TARGET]) {
-                const et = this[EVENT_TARGET] = new EventTarget;
-                et.dispatchEvent = et.dispatchEvent.bind(et);
-                et.addEventListener = et.addEventListener.bind(et);
-                et.removeEventListener = et.removeEventListener.bind(et);
-              }
-              return this[EVENT_TARGET][name];
+              return windowTarget(this)[name];
             case 'document':
               return this;
             /* c8 ignore start */
@@ -162,19 +192,54 @@ class Document extends NonElementParentNode {
 
   get isConnected() { return true; }
 
+  // https://html.spec.whatwg.org/multipage/scripting.html#appropriate-template-contents-owner-document
+  get [TEMPLATE_DOCUMENT]() {
+    const document = withoutBrowsingContext(
+      new this.constructor(this[MIME].ignoreCase ? 'text/html' : 'application/xml'),
+      this
+    );
+    document[DOM_PARSER] = this[DOM_PARSER];
+    defineProperties(document, {[TEMPLATE_DOCUMENT]: {value: document}});
+    defineProperties(this, {[TEMPLATE_DOCUMENT]: {value: document}});
+    return document;
+  }
+
   /**
    * @protected
    */
    _getParent() {
-    return this[EVENT_TARGET];
+    return windowTarget(this);
   }
 
-  createAttribute(name) { return new Attr(this, name); }
+  createAttribute(name) {
+    name = validAttributeName(String(name));
+    return new Attr(this, this[MIME].ignoreCase ? asciiLowercase(name) : name);
+  }
   createCDATASection(data) { return new CDATASection(this, data); }
   createComment(textContent) { return new Comment(this, textContent); }
   createDocumentFragment() { return new DocumentFragment(this); }
   createDocumentType(name, publicId, systemId) { return new DocumentType(this, name, publicId, systemId); }
-  createElement(localName) { return new Element(this, localName); }
+
+  /**
+   * @param {string} localName
+   * @param {ElementCreationOptions} [options]
+   * @returns {any}
+   */
+  createElement(localName, options) {
+    localName = validElementName(String(localName));
+    const {ignoreCase: isHTML, type} = this[MIME];
+    const is = isHTML && options && options.is || null;
+    const element = this[CREATE_ELEMENT](
+      isHTML || type === 'application/xhtml+xml' ? HTML_NAMESPACE : null,
+      isHTML ? asciiLowercase(localName) : localName,
+      null,
+      is
+    );
+    if (is)
+      element.setAttribute('is', is);
+    return element;
+  }
+
   createRange() {
     const range = new Range;
     range.commonAncestorContainer = this;
@@ -204,21 +269,18 @@ class Document extends NonElementParentNode {
     return event;
   }
 
-  cloneNode(deep = false) {
-    const {
-      constructor,
-      [CUSTOM_ELEMENTS]: customElements,
-      [DOCTYPE]: doctype
-    } = this;
-    const document = new constructor();
-    document[CUSTOM_ELEMENTS] = customElements;
+  [CLONE](_, deep) {
+    const document = new this.constructor(this[MIME].type);
+    document[CUSTOM_ELEMENTS] = this[CUSTOM_ELEMENTS];
+    document[DOM_PARSER] = this[DOM_PARSER];
+    document[MODE] = this[MODE];
     if (deep) {
-      const end = document[END];
-      const {childNodes} = this;
-      for (let {length} = childNodes, i = 0; i < length; i++)
-        document.insertBefore(childNodes[i].cloneNode(true), end);
-      if (doctype)
-        document[DOCTYPE] = childNodes[0];
+      for (const child of this.childNodes) {
+        const clone = child[CLONE](document, true);
+        if (clone.nodeType === DOCUMENT_TYPE_NODE)
+          document[DOCTYPE] = clone;
+        document.insertBefore(clone);
+      }
     }
     return document;
   }
@@ -227,34 +289,16 @@ class Document extends NonElementParentNode {
     // important: keep the signature length as *one*
     // or it would behave like old IE or Edge with polyfills
     const deep = 1 < arguments.length && !!arguments[1];
-    const node = externalNode.cloneNode(deep);
-    const {[CUSTOM_ELEMENTS]: customElements} = this;
-    const {active} = customElements;
-    const upgrade = element => {
-      const {ownerDocument, nodeType} = element;
-      element.ownerDocument = this;
-      if (active && ownerDocument !== this && nodeType === ELEMENT_NODE)
-        customElements.upgrade(element);
-    };
-    upgrade(node);
-    if (deep) {
-      switch (node.nodeType) {
-        case ELEMENT_NODE:
-        case DOCUMENT_FRAGMENT_NODE: {
-          let {[NEXT]: next, [END]: end} = node;
-          while (next !== end) {
-            if (next.nodeType === ELEMENT_NODE)
-              upgrade(next);
-            next = next[NEXT];
-          }
-          break;
-        }
-      }
-    }
-    return node;
+    if (externalNode.nodeType === DOCUMENT_NODE)
+      throw new DOMException('Cannot import a document node', 'NotSupportedError');
+    if (externalNode instanceof ShadowRoot)
+      throw new DOMException('Cannot adopt a shadow root', 'NotSupportedError');
+    return externalNode[CLONE](this, deep);
   }
 
-  toString() { return this.childNodes.join(''); }
+  toString() {
+    return this[MIME].ignoreCase ? innerHTML(this) : serializeXML(this, false);
+  }
 
   querySelector(selectors) {
     return query(super.querySelector, this, selectors);
@@ -264,19 +308,33 @@ class Document extends NonElementParentNode {
     return query(super.querySelectorAll, this, selectors);
   }
 
-  /* c8 ignore start */
-  getElementsByTagNameNS(_, name) {
-    return this.getElementsByTagName(name);
+  createAttributeNS(namespace, qualifiedName) {
+    qualifiedName = String(qualifiedName);
+    const {namespace: ns, prefix, localName} = validateAndExtract(namespace, qualifiedName, false);
+    return new Attr(this, qualifiedName, '', ns, prefix, localName);
   }
-  createAttributeNS(_, name) {
-    return this.createAttribute(name);
+
+  createElementNS(namespace, qualifiedName, options) {
+    const {namespace: ns, prefix, localName} = validateAndExtract(namespace, String(qualifiedName), true);
+    const is = ns === HTML_NAMESPACE && options && options.is || null;
+    const element = this[CREATE_ELEMENT](ns, localName, prefix, is);
+    if (is)
+      element.setAttribute('is', is);
+    return element;
   }
-  createElementNS(nsp, localName, options) {
-    return nsp === SVG_NAMESPACE ?
-            new SVGElement(this, localName, null) :
-            this.createElement(localName, options);
+
+  // https://dom.spec.whatwg.org/#concept-create-element
+  [CREATE_ELEMENT](namespace, localName, prefix = null, is = null, synchronous = true) {
+    const Class = elementInterface(namespace, localName);
+    const element = new Class(this, localName);
+    if (Class === Element)
+      element[NAMESPACE] = namespace;
+    if (prefix)
+      element[PREFIX] = prefix;
+    if (synchronous && namespace === HTML_NAMESPACE && this[CUSTOM_ELEMENTS].active)
+      constructCustomElement(this, element, is);
+    return element;
   }
-  /* c8 ignore stop */
 }
 exports.Document = Document
 

@@ -8,25 +8,75 @@ import {
   TEXT_NODE,
   NODE_END,
   CDATA_SECTION_NODE,
-  COMMENT_NODE
+  COMMENT_NODE,
+  HTML_NAMESPACE
 } from '../shared/constants.js';
 
-import {PRIVATE, END, NEXT, PREV, START, VALUE} from '../shared/symbols.js';
+import {
+  CONTENT, PRIVATE, END, MIME, NEXT, PREFIX, PREV, START, TEMPLATE_DOCUMENT, VALUE
+} from '../shared/symbols.js';
 
 import {prepareMatch} from '../shared/matches.js';
+import {asciiLowercase} from '../shared/names.js';
 import {previousSibling, nextSibling} from '../shared/node.js';
-import {getEnd, knownAdjacent, knownBoundaries, knownSegment, knownSiblings, localCase} from '../shared/utils.js';
+import {shadowRoots} from '../shared/shadow-roots.js';
+import {baseChanged} from '../shared/url.js';
+import {getEnd, knownAdjacent, knownBoundaries, knownSegment, knownSiblings} from '../shared/utils.js';
 
 import {Node} from '../interface/node.js';
 import {Text} from '../interface/text.js';
 import {NodeList} from '../interface/node-list.js';
 
 import {moCallback} from '../interface/mutation-observer.js';
-import {connectedCallback} from '../interface/custom-element-registry.js';
+import {adoptedCallback, connectedCallback} from '../interface/custom-element-registry.js';
 
 import {nextElementSibling} from './non-document-type-child-node.js';
 
 const isNode = node => node instanceof Node;
+
+// WebIDL's conversion of a Node argument, with the message browsers give.
+const nodeArgument = (method, node) => {
+  if (!isNode(node))
+    throw new TypeError(`Failed to execute '${method}' on 'Node': parameter 1 is not of type 'Node'.`);
+};
+
+// https://dom.spec.whatwg.org/#concept-node-adopt
+const adopt = (node, document) => {
+  const oldDocument = node.ownerDocument;
+  const end = node.nodeType === DOCUMENT_FRAGMENT_NODE ? node[END] : getEnd(node);
+  for (let next = node; ; next = next[NEXT]) {
+    next.ownerDocument = document;
+    if (next.nodeType === ELEMENT_NODE) {
+      // https://html.spec.whatwg.org/multipage/scripting.html#template-adopting-steps
+      const content = next[CONTENT];
+      if (content && content.ownerDocument !== document[TEMPLATE_DOCUMENT])
+        adopt(content, document[TEMPLATE_DOCUMENT]);
+      if (shadowRoots.has(next))
+        adopt(shadowRoots.get(next).shadowRoot, document);
+      adoptedCallback(next, oldDocument, document);
+    }
+    if (next === end)
+      break;
+  }
+};
+
+const descendants = (root, matches) => {
+  const elements = new NodeList;
+  let {[NEXT]: next, [END]: end} = root;
+  while (next !== end) {
+    if (next.nodeType === ELEMENT_NODE && matches(next))
+      elements.push(next);
+    next = next[NEXT];
+  }
+  return elements;
+};
+
+const asciiWhitespaces = /[\t\n\f\r ]+/;
+
+// https://dom.spec.whatwg.org/#concept-ordered-set-parser
+const orderedSet = value => [...new Set(value.split(asciiWhitespaces))].filter(Boolean);
+
+const qualify = ({[PREFIX]: prefix, localName}) => prefix ? `${prefix}:${localName}` : localName;
 
 const insert = (parentNode, child, nodes) => {
   const {ownerDocument} = parentNode;
@@ -150,33 +200,37 @@ export class ParentNode extends Node {
       insert(this, end, nodes);
   }
 
-  getElementsByClassName(className) {
-    const elements = new NodeList;
-    let {[NEXT]: next, [END]: end} = this;
-    while (next !== end) {
-      if (
-        next.nodeType === ELEMENT_NODE &&
-        next.hasAttribute('class') &&
-        next.classList.has(className)
-      )
-        elements.push(next);
-      next = next[NEXT];
-    }
-    return elements;
+  // https://dom.spec.whatwg.org/#concept-getelementsbyclassname
+  getElementsByClassName(classNames) {
+    const classes = orderedSet(String(classNames));
+    const hasClasses = ({classList}) => classes.every(token => classList.has(token));
+    return classes.length ?
+      descendants(this, element => element.hasAttribute('class') && hasClasses(element)) :
+      new NodeList;
   }
 
-  getElementsByTagName(tagName) {
-    const elements = new NodeList;
-    let {[NEXT]: next, [END]: end} = this;
-    while (next !== end) {
-      if (next.nodeType === ELEMENT_NODE && (
-        next.localName === tagName ||
-        localCase(next) === tagName
-      ))
-        elements.push(next);
-      next = next[NEXT];
+  // https://dom.spec.whatwg.org/#concept-getelementsbytagname
+  getElementsByTagName(qualifiedName) {
+    qualifiedName = String(qualifiedName);
+    if (qualifiedName === '*')
+      return descendants(this, () => true);
+    if ((this.ownerDocument || this)[MIME].ignoreCase) {
+      const lowercase = asciiLowercase(qualifiedName);
+      return descendants(this, element => qualify(element) === (
+        element.namespaceURI === HTML_NAMESPACE ? lowercase : qualifiedName
+      ));
     }
-    return elements;
+    return descendants(this, element => qualify(element) === qualifiedName);
+  }
+
+  // https://dom.spec.whatwg.org/#concept-getelementsbytagnamens
+  getElementsByTagNameNS(namespace, localName) {
+    namespace = namespace === '' || namespace == null ? null : String(namespace);
+    localName = String(localName);
+    return descendants(this, element =>
+      (namespace === '*' || element.namespaceURI === namespace) &&
+      (localName === '*' || element.localName === localName)
+    );
   }
 
   querySelector(selectors) {
@@ -185,7 +239,7 @@ export class ParentNode extends Node {
     while (next !== end) {
       if (next.nodeType === ELEMENT_NODE && matches(next))
         return next;
-      next = next.nodeType === ELEMENT_NODE && next.localName === 'template' ? next[END] : next[NEXT];
+      next = next[NEXT];
     }
     return null;
   }
@@ -197,12 +251,13 @@ export class ParentNode extends Node {
     while (next !== end) {
       if (next.nodeType === ELEMENT_NODE && matches(next))
         elements.push(next);
-      next = next.nodeType === ELEMENT_NODE && next.localName === 'template' ? next[END] : next[NEXT];
+      next = next[NEXT];
     }
     return elements;
   }
 
   appendChild(node) {
+    nodeArgument('appendChild', node);
     return this.insertBefore(node, this[END]);
   }
 
@@ -214,16 +269,21 @@ export class ParentNode extends Node {
   }
 
   insertBefore(node, before = null) {
+    nodeArgument('insertBefore', node);
     if (node === before)
       return node;
     if (node === this)
       throw new Error('unable to append a node to itself');
     const next = before || this[END];
+    const document = this.ownerDocument || this;
     switch (node.nodeType) {
       case ELEMENT_NODE:
         node.remove();
+        if (node.ownerDocument !== document)
+          adopt(node, document);
         node.parentNode = this;
         knownBoundaries(next[PREV], node, next);
+        baseChanged(this);
         moCallback(node, null);
         connectedCallback(node);
         break;
@@ -231,10 +291,13 @@ export class ParentNode extends Node {
         let {[PRIVATE]: parentNode, firstChild, lastChild} = node;
         if (firstChild) {
           knownSegment(next[PREV], firstChild, lastChild, next);
+          baseChanged(this);
           knownAdjacent(node, node[END]);
           if (parentNode)
             parentNode.replaceChildren();
           do {
+            if (firstChild.ownerDocument !== document)
+              adopt(firstChild, document);
             firstChild.parentNode = this;
             moCallback(firstChild, null);
             if (firstChild.nodeType === ELEMENT_NODE)
@@ -253,6 +316,8 @@ export class ParentNode extends Node {
       /* eslint no-fallthrough:0 */
       // this covers DOCUMENT_TYPE_NODE too
       default:
+        if (node.ownerDocument !== document)
+          adopt(node, document);
         node.parentNode = this;
         knownSiblings(next[PREV], node, next);
         moCallback(node, null);

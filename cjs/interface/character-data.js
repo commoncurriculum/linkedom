@@ -1,7 +1,7 @@
 'use strict';
 // https://dom.spec.whatwg.org/#interface-characterdata
 
-const {NEXT, PREV, VALUE} = require('../shared/symbols.js');
+const {CLONE, NEXT, PREV, VALUE} = require('../shared/symbols.js');
 const {String} = require('../shared/utils.js');
 const {isConnected, parentElement, previousSibling, nextSibling} = require('../shared/node.js');
 const {characterDataAsJSON} = require('../shared/jsdon.js');
@@ -20,6 +20,10 @@ class CharacterData extends Node {
   constructor(ownerDocument, localName, nodeType, data) {
     super(ownerDocument, localName, nodeType);
     this[VALUE] = String(data);
+  }
+
+  [CLONE](document) {
+    return new this.constructor(document, this[VALUE]);
   }
 
   // <Mixins>

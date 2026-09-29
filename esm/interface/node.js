@@ -14,14 +14,58 @@ import {
   DOCUMENT_POSITION_FOLLOWING,
   DOCUMENT_POSITION_CONTAINS,
   DOCUMENT_POSITION_CONTAINED_BY,
-  DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC
+  DOCUMENT_POSITION_IMPLEMENTATION_SPECIFIC,
+  XML_NAMESPACE,
+  XMLNS_NAMESPACE
 } from '../shared/constants.js';
 
-import {NEXT, PREV} from '../shared/symbols.js';
+import {CLONE, NEXT, PREV} from '../shared/symbols.js';
+import {ignoreCase} from '../shared/utils.js';
+import {outerHTML} from '../shared/serialize-html.js';
+import {serializeXML} from '../shared/serialize-xml.js';
+import {documentBaseURL} from '../shared/url.js';
 
 import {EventTarget} from './event-target.js';
 
 import {NodeList} from './node-list.js';
+
+// https://dom.spec.whatwg.org/#locate-a-namespace
+const locateNamespace = (node, prefix) => {
+  switch (node.nodeType) {
+    case ELEMENT_NODE: {
+      if (prefix === 'xml')
+        return XML_NAMESPACE;
+      if (prefix === 'xmlns')
+        return XMLNS_NAMESPACE;
+      const {namespaceURI} = node;
+      if (namespaceURI !== null && node.prefix === prefix)
+        return namespaceURI;
+      for (const attribute of node.attributes) {
+        if (attribute.namespaceURI === XMLNS_NAMESPACE && (
+          prefix === null ?
+            attribute.prefix === null && attribute.localName === 'xmlns' :
+            attribute.prefix === 'xmlns' && attribute.localName === prefix
+        ))
+          return attribute.value || null;
+      }
+      const {parentElement} = node;
+      return parentElement ? locateNamespace(parentElement, prefix) : null;
+    }
+    case DOCUMENT_NODE: {
+      const {documentElement} = node;
+      return documentElement ? locateNamespace(documentElement, prefix) : null;
+    }
+    case DOCUMENT_TYPE_NODE:
+    case DOCUMENT_FRAGMENT_NODE:
+      return null;
+    case ATTRIBUTE_NODE: {
+      const {ownerElement} = node;
+      return ownerElement ? locateNamespace(ownerElement, prefix) : null;
+    }
+  }
+  const {parentElement} = node;
+  return parentElement ? locateNamespace(parentElement, prefix) : null;
+};
 
 const getParentNodeCount = ({parentNode}) => {
   let count = 0;
@@ -66,19 +110,13 @@ export class Node extends EventTarget {
   get DOCUMENT_TYPE_NODE() { return DOCUMENT_TYPE_NODE; }
 
   get baseURI() {
-    const ownerDocument = this.nodeType === DOCUMENT_NODE ?
-                            this : this.ownerDocument;
-    if (ownerDocument) {
-      const base = ownerDocument.querySelector('base');
-      if (base)
-        return base.getAttribute('href');
+    const document = this.nodeType === DOCUMENT_NODE ? this : this.ownerDocument;
+    return document ? documentBaseURL(document) : null;
+  }
 
-      const {location} = ownerDocument.defaultView;
-      if (location)
-        return location.href;
-    }
-
-    return null;
+  // https://dom.spec.whatwg.org/#dom-node-clonenode
+  cloneNode(deep = false) {
+    return this[CLONE](this.ownerDocument, !!deep);
   }
 
   /* c8 ignore start */
@@ -100,7 +138,6 @@ export class Node extends EventTarget {
   get textContent() { return null; }
   set textContent(value) {}
   normalize() {}
-  cloneNode() { return null; }
   contains() { return false; }
   /**
    * Inserts a node before a reference node as a child of this parent node.
@@ -129,11 +166,22 @@ export class Node extends EventTarget {
    * @returns The removed node.
    */
   removeChild(child) { return child }
-  toString() { return ''; }
   /* c8 ignore stop */
+
+  toString() {
+    return ignoreCase(this) ? outerHTML(this) : serializeXML(this, false);
+  }
 
   hasChildNodes() { return !!this.lastChild; }
   isSameNode(node) { return this === node; }
+
+  lookupNamespaceURI(prefix) {
+    return locateNamespace(this, prefix === '' || prefix === undefined ? null : prefix);
+  }
+
+  isDefaultNamespace(namespace) {
+    return this.lookupNamespaceURI(null) === (namespace === '' ? null : namespace);
+  }
 
   // TODO: attributes?
   compareDocumentPosition(target) {

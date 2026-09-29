@@ -1,2 +1,2 @@
 export function getInnerHtml(node: Node): string;
-export function setInnerHtml(node: Node, html: string): void;
+export function setInnerHtml(node: Element | ShadowRoot, html: string): void;

@@ -1,5 +1,4 @@
 import {HTMLElement} from './element.js';
-import {registerHTMLClass} from '../shared/register-html-class.js';
 import { stringAttribute } from '../shared/attributes.js';
 
 const tagName = 'meta'
@@ -29,6 +28,3 @@ export class HTMLMetaElement extends HTMLElement {
   /* c8 ignore stop */
 
 }
-
-registerHTMLClass(tagName, HTMLMetaElement);
-

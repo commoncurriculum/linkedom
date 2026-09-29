@@ -1,17 +1,16 @@
 'use strict';
 const {parse} = require('cssom');
 
-const {registerHTMLClass} = require('../shared/register-html-class.js');
 const {SHEET} = require('../shared/symbols.js');
 
-const {TextElement} = require('./text-element.js');
+const {HTMLElement} = require('./element.js');
 
 const tagName = 'style';
 
 /**
  * @implements globalThis.HTMLStyleElement
  */
-class HTMLStyleElement extends TextElement {
+class HTMLStyleElement extends HTMLElement {
   constructor(ownerDocument, localName = tagName) {
     super(ownerDocument, localName);
     this[SHEET] = null;
@@ -47,7 +46,5 @@ class HTMLStyleElement extends TextElement {
     this[SHEET] = null;
   }
 }
-
-registerHTMLClass(tagName, HTMLStyleElement);
 
 exports.HTMLStyleElement = HTMLStyleElement;

@@ -3,7 +3,8 @@
  */
 export class Element extends ParentNode implements globalThis.Element {
     constructor(ownerDocument: any, localName: any);
-    get namespaceURI(): string;
+    get namespaceURI(): any;
+    get prefix(): any;
     before(...nodes: any[]): void;
     after(...nodes: any[]): void;
     replaceWith(...nodes: any[]): void;
@@ -27,7 +28,6 @@ export class Element extends ParentNode implements globalThis.Element {
     };
     set nonce(value: any);
     get nonce(): any;
-    get style(): any;
     set tabIndex(value: number);
     get tabIndex(): number;
     set slot(value: any);
@@ -46,14 +46,20 @@ export class Element extends ParentNode implements globalThis.Element {
     focus(): void;
     getAttribute(name: any): any;
     getAttributeNode(name: any): any;
+    getAttributeNS(namespace: any, localName: any): any;
+    getAttributeNodeNS(namespace: any, localName: any): any;
     getAttributeNames(): NodeList;
     hasAttribute(name: any): boolean;
+    hasAttributeNS(namespace: any, localName: any): boolean;
     hasAttributes(): boolean;
     removeAttribute(name: any): void;
+    removeAttributeNS(namespace: any, localName: any): void;
     removeAttributeNode(attribute: any): void;
     setAttribute(name: any, value: any): void;
+    setAttributeNS(namespace: any, qualifiedName: any, value: any): void;
     setAttributeNode(attribute: any): any;
-    toggleAttribute(name: any, force: any, ...args: any[]): boolean;
+    setAttributeNodeNS(attribute: any): any;
+    toggleAttribute(name: any, force: any): boolean;
     get shadowRoot(): any;
     attachShadow(init: any): ShadowRoot;
     matches(selectors: any): boolean;
@@ -61,21 +67,16 @@ export class Element extends ParentNode implements globalThis.Element {
     insertAdjacentElement(position: any, element: any): any;
     insertAdjacentHTML(position: any, html: any): void;
     insertAdjacentText(position: any, text: any): void;
-    cloneNode(deep?: boolean): any;
     toJSON(): any[];
-    getAttributeNS(_: any, name: any): any;
-    getElementsByTagNameNS(_: any, name: any): NodeList;
-    hasAttributeNS(_: any, name: any): boolean;
-    removeAttributeNS(_: any, name: any): void;
-    setAttributeNS(_: any, name: any, value: any): void;
-    setAttributeNodeNS(attr: any): any;
+    [ATTRIBUTE_CHANGED](attribute: any, value: any): void;
+    [CLONE](document: any, deep: any): any;
     [CLASS_LIST]: any;
     [DATASET]: any;
-    [STYLE]: any;
 }
 import { ParentNode } from '../mixin/parent-node.js';
 import { NodeList } from './node-list.js';
 import { ShadowRoot } from './shadow-root.js';
+import { ATTRIBUTE_CHANGED } from '../shared/symbols.js';
+import { CLONE } from '../shared/symbols.js';
 import { CLASS_LIST } from '../shared/symbols.js';
 import { DATASET } from '../shared/symbols.js';
-import { STYLE } from '../shared/symbols.js';

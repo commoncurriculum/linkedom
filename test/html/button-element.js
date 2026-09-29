@@ -4,10 +4,10 @@ const {parseHTML} = global[Symbol.for('linkedom')];
 
 const {document} = parseHTML('<button>click me</button>');
 
-const {lastElementChild: button} = document;
+const {lastElementChild: button} = document.body;
 
 button.disabled = true;
-assert(button.toString(), '<button disabled>click me</button>');
+assert(button.toString(), '<button disabled="">click me</button>');
 assert(button.disabled, true);
 assert(JSON.stringify(button), '[1,"button",2,"disabled",3,"click me",-1]');
 

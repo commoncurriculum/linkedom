@@ -1,5 +1,6 @@
 'use strict';
 const {DOCUMENT_FRAGMENT_NODE} = require('../shared/constants.js');
+const {CLONE} = require('../shared/symbols.js');
 const {getInnerHtml, setInnerHtml} = require('../mixin/inner-html.js');
 const {NonElementParentNode} = require('../mixin/non-element-parent-node.js');
 
@@ -17,6 +18,10 @@ class ShadowRoot extends NonElementParentNode {
   }
   set innerHTML(html) {
     setInnerHtml(this, html);
+  }
+
+  [CLONE]() {
+    throw new DOMException('ShadowRoot nodes are not clonable.', 'NotSupportedError');
   }
 }
 exports.ShadowRoot = ShadowRoot

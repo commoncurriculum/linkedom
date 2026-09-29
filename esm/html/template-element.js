@@ -1,6 +1,4 @@
-import {CONTENT, PRIVATE} from '../shared/symbols.js';
-
-import {registerHTMLClass} from '../shared/register-html-class.js';
+import {CONTENT, TEMPLATE_DOCUMENT} from '../shared/symbols.js';
 
 import {HTMLElement} from './element.js';
 
@@ -12,19 +10,12 @@ const tagName = 'template';
 class HTMLTemplateElement extends HTMLElement {
   constructor(ownerDocument) {
     super(ownerDocument, tagName);
-    const content = this.ownerDocument.createDocumentFragment();
-    (this[CONTENT] = content)[PRIVATE] = this;
+    this[CONTENT] = this.ownerDocument[TEMPLATE_DOCUMENT].createDocumentFragment();
   }
 
   get content() {
-    if (this.hasChildNodes() && !this[CONTENT].hasChildNodes()) {
-      for (const node of this.childNodes)
-        this[CONTENT].appendChild(node.cloneNode(true));
-    }
     return this[CONTENT];
   }
 }
-
-registerHTMLClass(tagName, HTMLTemplateElement);
 
 export {HTMLTemplateElement};

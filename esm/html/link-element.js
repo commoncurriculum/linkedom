@@ -1,4 +1,3 @@
-import {registerHTMLClass} from '../shared/register-html-class.js';
 import {booleanAttribute, stringAttribute} from '../shared/attributes.js';
 
 import {HTMLElement} from './element.js';
@@ -34,7 +33,5 @@ class HTMLLinkElement extends HTMLElement {
   /* c8 ignore stop */
 
 }
-
-registerHTMLClass(tagName, HTMLLinkElement);
 
 export {HTMLLinkElement};

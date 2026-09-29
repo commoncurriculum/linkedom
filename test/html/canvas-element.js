@@ -10,7 +10,7 @@ assert(canvas.width, 300, 'canvas.width');
 canvas.height = 200;
 canvas.width = 320;
 
-assert(canvas.toString(), '<canvas width="320" height="200"></canvas>');
+assert(canvas.toString(), '<canvas height="200" width="320"></canvas>');
 
 assert(canvas.getContext('2d') !== void 0, true, 'canvas.getContext');
 

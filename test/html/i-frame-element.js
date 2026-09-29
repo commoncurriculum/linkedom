@@ -4,7 +4,7 @@ const {parseHTML} = global[Symbol.for('linkedom')];
 
 const {document} = parseHTML('<html><iframe src="./test.html"></html>');
 
-const {firstElementChild: iframe} = document.documentElement;
+const {firstElementChild: iframe} = document.body;
 
 assert(iframe.src, './test.html', 'Issue #82 - <iframe>.src');
 
@@ -16,7 +16,7 @@ assert(iframe.src, './test.html', 'Issue #82 - <iframe>.src');
   iframe.srcdoc = `<html><span style="color: red">Test</span></html>`;
   assert(
     document.body.innerHTML,
-    `<iframe srcdoc="<html><span style=&quot;color: red&quot;>Test</span></html>"></iframe>`
+    `<iframe srcdoc="&lt;html&gt;&lt;span style=&quot;color: red&quot;&gt;Test&lt;/span&gt;&lt;/html&gt;"></iframe>`
   );
 }
 
@@ -30,7 +30,7 @@ assert(iframe.src, './test.html', 'Issue #82 - <iframe>.src');
   iframe.loading = "lazy";
   assert(
     document.body.innerHTML,
-    `<iframe loading="lazy" referrerpolicy="no-referrer" name="iframe-name" allow="geolocation"></iframe>`
+    `<iframe allow="geolocation" name="iframe-name" referrerpolicy="no-referrer" loading="lazy"></iframe>`
   );
 }
 

@@ -1,36 +1,23 @@
-import {ELEMENT_NODE, DOCUMENT_FRAGMENT_NODE} from '../shared/constants.js';
-import {CUSTOM_ELEMENTS} from '../shared/symbols.js';
-import {parseFromString} from '../shared/parse-from-string.js';
+import {ELEMENT_NODE} from '../shared/constants.js';
+import {parseFragment} from '../shared/parse.js';
+import {innerHTML, isTemplate} from '../shared/serialize-html.js';
+import {serializeXML} from '../shared/serialize-xml.js';
 import {ignoreCase} from '../shared/utils.js';
-
 
 /**
  * @param {Node} node
  * @returns {String}
  */
-export const getInnerHtml = node => node.childNodes.join('');
+export const getInnerHtml = node => ignoreCase(node) ?
+  innerHTML(node) :
+  node.childNodes.map(child => serializeXML(child, true)).join('');
 
 /**
- * @param {Node} node
+ * @param {Element|ShadowRoot} node
  * @param {String} html
  */
 export const setInnerHtml = (node, html) => {
-  const {ownerDocument} = node;
-  const {constructor} = ownerDocument;
-  const document = new constructor;
-  document[CUSTOM_ELEMENTS] = ownerDocument[CUSTOM_ELEMENTS];
-  const {childNodes} = parseFromString(document, ignoreCase(node), html);
-
-  node.replaceChildren(...childNodes.map(setOwnerDocument, ownerDocument));
+  const isElement = node.nodeType === ELEMENT_NODE;
+  const target = isElement && isTemplate(node) ? node.content : node;
+  target.replaceChildren(parseFragment(isElement ? node : node.host, html, target.ownerDocument));
 };
-
-function setOwnerDocument(node) {
-  node.ownerDocument = this;
-  switch (node.nodeType) {
-    case ELEMENT_NODE:
-    case DOCUMENT_FRAGMENT_NODE:
-      node.childNodes.forEach(setOwnerDocument, this);
-      break;
-  }
-  return node;
-}

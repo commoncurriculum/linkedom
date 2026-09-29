@@ -6,27 +6,38 @@ const {
   BLOCK_ELEMENTS,
   CDATA_SECTION_NODE,
   COMMENT_NODE,
+  DOCUMENT_NODE,
   ELEMENT_NODE,
+  HTML_NAMESPACE,
   NODE_END,
-  TEXT_NODE,
-  SVG_NAMESPACE
+  TEXT_NODE
 } = require('../shared/constants.js');
 
 const {
-  setAttribute, removeAttribute, numericAttribute, stringAttribute
+  setAttribute, replaceAttribute, removeAttribute, numericAttribute, stringAttribute
 } = require('../shared/attributes.js');
 
 const {
-  CLASS_LIST, DATASET, STYLE, END, NEXT, PREV, START, MIME
+  ATTRIBUTE_CHANGED, CLASS_LIST, CLONE, CONTENT, CREATE_ELEMENT, DATASET, END, NEXT, PREV, NAMESPACE, PREFIX, RESET
 } = require('../shared/symbols.js');
 
 const {
-  htmlToFragment,
   ignoreCase,
   knownAdjacent,
-  localCase,
+  linkClones,
   String
 } = require('../shared/utils.js');
+
+const {
+  asciiLowercase,
+  asciiUppercase,
+  validAttributeName,
+  validateAndExtract
+} = require('../shared/names.js');
+
+const {outerHTML} = require('../shared/serialize-html.js');
+const {serializeXML} = require('../shared/serialize-xml.js');
+const {fragmentContext, parseFragment} = require('../shared/parse.js');
 
 const {elementAsJSON} = require('../shared/jsdon.js');
 const {matches, prepareMatch} = require('../shared/matches.js');
@@ -42,14 +53,13 @@ const {ParentNode} = require('../mixin/parent-node.js');
 const {DOMStringMap} = require('../dom/string-map.js');
 const {DOMTokenList} = require('../dom/token-list.js');
 
-const {CSSStyleDeclaration} = require('./css-style-declaration.js');
+const {upgradeClone} = require('./custom-element-registry.js');
 const {Event} = require('./event.js');
 const {NamedNodeMap} = require('./named-node-map.js');
 const {ShadowRoot} = require('./shadow-root.js');
 const {NodeList} = require('./node-list.js');
 const {Attr} = require('./attr.js');
 const {Text} = require('./text.js');
-const {escape} = require('../shared/text-escaper.js');
 
 // <utils>
 const attributesHandler = {
@@ -58,17 +68,73 @@ const attributesHandler = {
   }
 };
 
-const create = (ownerDocument, element, localName)  => {
-  if ('ownerSVGElement' in element) {
-    const svg = ownerDocument.createElementNS(SVG_NAMESPACE, localName);
-    svg.ownerSVGElement = element.ownerSVGElement;
-    return svg;
+// https://dom.spec.whatwg.org/#concept-node-clone
+const copy = (document, element, deep) => {
+  const clone = document[CREATE_ELEMENT](element.namespaceURI, element.localName, element.prefix, null, false);
+  if (deep && element[CONTENT]) {
+    const content = clone[CONTENT];
+    linkClones(element[CONTENT], content, content.ownerDocument);
   }
-  return ownerDocument.createElement(localName);
+  return clone;
 };
 
-const isVoid = ({localName, ownerDocument}) => {
-  return ownerDocument[MIME].voidElements.test(localName);
+// https://dom.spec.whatwg.org/#concept-element-attributes-get-by-name
+const qualify = (element, name) => (
+  element.namespaceURI === HTML_NAMESPACE && ignoreCase(element) ?
+    asciiLowercase(String(name)) : String(name)
+);
+
+const attributeNamed = (element, name) => {
+  let next = element[NEXT];
+  while (next.nodeType === ATTRIBUTE_NODE) {
+    if (next.name === name)
+      return next;
+    next = next[NEXT];
+  }
+  return null;
+};
+
+const attributeNS = (element, namespace, localName) => {
+  namespace = namespace === '' || namespace === undefined ? null : namespace;
+  localName = String(localName);
+  let next = element[NEXT];
+  while (next.nodeType === ATTRIBUTE_NODE) {
+    if (next.localName === localName && next.namespaceURI === namespace)
+      return next;
+    next = next[NEXT];
+  }
+  return null;
+};
+
+const invalidPosition = () => new DOMException(
+  'Must provide one of "beforebegin", "afterbegin", "beforeend", or "afterend".',
+  'SyntaxError'
+);
+
+// https://dom.spec.whatwg.org/#insert-adjacent
+const insertAdjacent = (element, position, node) => {
+  const {parentNode} = element;
+  switch (asciiLowercase(String(position))) {
+    case 'beforebegin':
+      if (!parentNode)
+        return null;
+      parentNode.insertBefore(node, element);
+      break;
+    case 'afterbegin':
+      element.insertBefore(node, element.firstChild);
+      break;
+    case 'beforeend':
+      element.insertBefore(node, null);
+      break;
+    case 'afterend':
+      if (!parentNode)
+        return null;
+      parentNode.insertBefore(node, element.nextSibling);
+      break;
+    default:
+      throw invalidPosition();
+  }
+  return node;
 };
 
 // </utils>
@@ -81,7 +147,6 @@ class Element extends ParentNode {
     super(ownerDocument, localName, ELEMENT_NODE);
     this[CLASS_LIST] = null;
     this[DATASET] = null;
-    this[STYLE] = null;
   }
 
   // <Mixins>
@@ -89,9 +154,8 @@ class Element extends ParentNode {
   get parentElement() { return parentElement(this); }
   get previousSibling() { return previousSibling(this); }
   get nextSibling() { return nextSibling(this); }
-  get namespaceURI() {
-    return 'http://www.w3.org/1999/xhtml';
-  }
+  get namespaceURI() { return this[NAMESPACE]; }
+  get prefix() { return this[PREFIX] || null; }
 
   get previousElementSibling() { return previousElementSibling(this); }
   get nextElementSibling() { return nextElementSibling(this); }
@@ -106,15 +170,15 @@ class Element extends ParentNode {
   get id() { return stringAttribute.get(this, 'id'); }
   set id(value) { stringAttribute.set(this, 'id', value); }
 
-  get className() { return this.classList.value; }
-  set className(value) {
-    const {classList} = this;
-    classList.clear();
-    classList.add(...(String(value).split(/\s+/)));
-  }
+  get className() { return this.getAttribute('class') ?? ''; }
+  set className(value) { this.setAttribute('class', value); }
 
-  get nodeName() { return localCase(this); }
-  get tagName() { return localCase(this); }
+  get nodeName() { return this.tagName; }
+  get tagName() {
+    const {localName, [PREFIX]: prefix} = this;
+    const name = prefix ? `${prefix}:${localName}` : localName;
+    return this.namespaceURI === HTML_NAMESPACE && ignoreCase(this) ? asciiUppercase(name) : name;
+  }
 
   get classList() {
     return this[CLASS_LIST] || (
@@ -143,12 +207,6 @@ class Element extends ParentNode {
 
   get nonce() { return stringAttribute.get(this, 'nonce'); }
   set nonce(value) { stringAttribute.set(this, 'nonce', value); }
-
-  get style() {
-    return this[STYLE] || (
-      this[STYLE] = new CSSStyleDeclaration(this)
-    );
-  }
 
   get tabIndex() { return numericAttribute.get(this, 'tabindex') || -1; }
   set tabIndex(value) { numericAttribute.set(this, 'tabindex', value); }
@@ -204,11 +262,15 @@ class Element extends ParentNode {
     setInnerHtml(this, html);
   }
 
-  get outerHTML() { return this.toString(); }
+  get outerHTML() { return ignoreCase(this) ? outerHTML(this) : serializeXML(this, true); }
   set outerHTML(html) {
-    const template = this.ownerDocument.createElement('');
-    template.innerHTML = html;
-    this.replaceWith(...template.childNodes);
+    const {parentNode} = this;
+    if (!parentNode)
+      return;
+    if (parentNode.nodeType === DOCUMENT_NODE)
+      throw new DOMException('A document can\'t take markup in place of its element.', 'NoModificationAllowedError');
+    const context = parentNode.nodeType === ELEMENT_NODE ? parentNode : fragmentContext(parentNode);
+    parentNode.replaceChild(parseFragment(context, html), this);
   }
   // </contentRelated>
 
@@ -226,20 +288,21 @@ class Element extends ParentNode {
   focus() { this.dispatchEvent(new Event('focus')); }
 
   getAttribute(name) {
-    if (name === 'class')
-      return this.className;
     const attribute = this.getAttributeNode(name);
-    return attribute && (ignoreCase(this) ? attribute.value : escape(attribute.value));
+    return attribute && attribute.value;
   }
 
   getAttributeNode(name) {
-    let next = this[NEXT];
-    while (next.nodeType === ATTRIBUTE_NODE) {
-      if (next.name === name)
-        return next;
-      next = next[NEXT];
-    }
-    return null;
+    return attributeNamed(this, qualify(this, name));
+  }
+
+  getAttributeNS(namespace, localName) {
+    const attribute = attributeNS(this, namespace, localName);
+    return attribute && attribute.value;
+  }
+
+  getAttributeNodeNS(namespace, localName) {
+    return attributeNS(this, namespace, localName);
   }
 
   getAttributeNames() {
@@ -253,19 +316,19 @@ class Element extends ParentNode {
   }
 
   hasAttribute(name) { return !!this.getAttributeNode(name); }
+  hasAttributeNS(namespace, localName) { return !!attributeNS(this, namespace, localName); }
   hasAttributes() { return this[NEXT].nodeType === ATTRIBUTE_NODE; }
 
   removeAttribute(name) {
-    if (name === 'class' && this[CLASS_LIST])
-        this[CLASS_LIST].clear();
-    let next = this[NEXT];
-    while (next.nodeType === ATTRIBUTE_NODE) {
-      if (next.name === name) {
-        removeAttribute(this, next);
-        return;
-      }
-      next = next[NEXT];
-    }
+    const attribute = this.getAttributeNode(name);
+    if (attribute)
+      removeAttribute(this, attribute);
+  }
+
+  removeAttributeNS(namespace, localName) {
+    const attribute = attributeNS(this, namespace, localName);
+    if (attribute)
+      removeAttribute(this, attribute);
   }
 
   removeAttributeNode(attribute) {
@@ -280,44 +343,61 @@ class Element extends ParentNode {
   }
 
   setAttribute(name, value) {
-    if (name === 'class')
-      this.className = value;
-    else {
-      const attribute = this.getAttributeNode(name);
-      if (attribute)
-        attribute.value = value;
-      else
-        setAttribute(this, new Attr(this.ownerDocument, name, value));
-    }
+    name = qualify(this, validAttributeName(String(name)));
+    const attribute = attributeNamed(this, name);
+    if (attribute)
+      attribute.value = value;
+    else
+      setAttribute(this, new Attr(this.ownerDocument, name, value));
+  }
+
+  setAttributeNS(namespace, qualifiedName, value) {
+    qualifiedName = String(qualifiedName);
+    const {namespace: ns, prefix, localName} = validateAndExtract(namespace, qualifiedName, false);
+    const attribute = attributeNS(this, ns, localName);
+    if (attribute)
+      attribute.value = value;
+    else
+      setAttribute(this, new Attr(this.ownerDocument, qualifiedName, value, ns, prefix, localName));
   }
 
   setAttributeNode(attribute) {
-    const {name} = attribute;
-    const previously = this.getAttributeNode(name);
-    if (previously !== attribute) {
-      if (previously)
-        this.removeAttributeNode(previously);
-      const {ownerElement} = attribute;
-      if (ownerElement)
-        ownerElement.removeAttributeNode(attribute);
+    const {ownerElement, namespaceURI, localName} = attribute;
+    if (ownerElement && ownerElement !== this)
+      throw new DOMException('The attribute belongs to another element.', 'InUseAttributeError');
+    const previously = attributeNS(this, namespaceURI, localName);
+    if (previously === attribute)
+      return attribute;
+    if (previously)
+      replaceAttribute(this, previously, attribute);
+    else
       setAttribute(this, attribute);
-    }
     return previously;
   }
 
+  setAttributeNodeNS(attribute) { return this.setAttributeNode(attribute); }
+
   toggleAttribute(name, force) {
-    if (this.hasAttribute(name)) {
-      if (!force) {
-        this.removeAttribute(name);
-        return false;
+    name = qualify(this, validAttributeName(String(name)));
+    const attribute = attributeNamed(this, name);
+    if (!attribute) {
+      if (force === undefined || force) {
+        setAttribute(this, new Attr(this.ownerDocument, name, ''));
+        return true;
       }
-      return true;
+      return false;
     }
-    else if (force || arguments.length === 1) {
-      this.setAttribute(name, '');
-      return true;
+    if (force === undefined || !force) {
+      removeAttribute(this, attribute);
+      return false;
     }
-    return false;
+    return true;
+  }
+
+  // https://dom.spec.whatwg.org/#concept-element-attributes-change-ext
+  [ATTRIBUTE_CHANGED](attribute, value) {
+    if (attribute.localName === 'class' && attribute.namespaceURI === null)
+      this[CLASS_LIST]?.[RESET](value);
   }
   // </attributes>
 
@@ -358,48 +438,43 @@ class Element extends ParentNode {
 
   // <insertAdjacent>
   insertAdjacentElement(position, element) {
-    const {parentElement} = this;
-    switch (position) {
-      case 'beforebegin':
-        if (parentElement) {
-          parentElement.insertBefore(element, this);
-          break;
-        }
-        return null;
-      case 'afterbegin':
-        this.insertBefore(element, this.firstChild);
-        break;
-      case 'beforeend':
-        this.insertBefore(element, null);
-        break;
-      case 'afterend':
-        if (parentElement) {
-          parentElement.insertBefore(element, this.nextSibling);
-          break;
-        }
-        return null;
-    }
-    return element;
+    return insertAdjacent(this, position, element);
   }
 
+  // https://html.spec.whatwg.org/multipage/dynamic-markup-insertion.html#dom-element-insertadjacenthtml
   insertAdjacentHTML(position, html) {
-    this.insertAdjacentElement(position, htmlToFragment(this.ownerDocument, html));
+    let context = this;
+    switch (asciiLowercase(String(position))) {
+      case 'beforebegin':
+      case 'afterend':
+        context = this.parentNode;
+        if (!context || context.nodeType === DOCUMENT_NODE)
+          throw new DOMException('The element has no parent to take the markup.', 'NoModificationAllowedError');
+        break;
+      case 'afterbegin':
+      case 'beforeend':
+        break;
+      default:
+        throw invalidPosition();
+    }
+    insertAdjacent(this, position, parseFragment(fragmentContext(context), html));
   }
 
   insertAdjacentText(position, text) {
-    const node = this.ownerDocument.createTextNode(text);
-    this.insertAdjacentElement(position, node);
+    insertAdjacent(this, position, this.ownerDocument.createTextNode(text));
   }
   // </insertAdjacent>
 
-  cloneNode(deep = false) {
-    const {ownerDocument, localName} = this;
+  [CLONE](document, deep) {
     const addNext = next => {
-      next.parentNode = parentNode;
       knownAdjacent($next, next);
       $next = next;
     };
-    const clone = create(ownerDocument, this, localName);
+    const addChild = child => {
+      child.parentNode = parentNode;
+      addNext(child);
+    };
+    const clone = copy(document, this, deep);
     let parentNode = clone, $next = clone;
     let {[NEXT]: next, [END]: prev} = this;
     while (next !== prev && (deep || next.nodeType === ATTRIBUTE_NODE)) {
@@ -410,13 +485,13 @@ class Element extends ParentNode {
           parentNode = parentNode.parentNode;
           break;
         case ELEMENT_NODE: {
-          const node = create(ownerDocument, next, next.localName);
-          addNext(node);
+          const node = copy(document, next, true);
+          addChild(node);
           parentNode = node;
           break;
         }
         case ATTRIBUTE_NODE: {
-          const attr = next.cloneNode(deep);
+          const attr = next[CLONE](document);
           attr.ownerElement = parentNode;
           addNext(attr);
           break;
@@ -424,90 +499,22 @@ class Element extends ParentNode {
         case TEXT_NODE:
         case COMMENT_NODE:
         case CDATA_SECTION_NODE:
-          addNext(next.cloneNode(deep));
+          addChild(next[CLONE](document));
           break;
       }
       next = next[NEXT];
     }
     knownAdjacent($next, clone[END]);
+    upgradeClone(document, clone);
     return clone;
   }
 
   // <custom>
-  toString() {
-    const out = [];
-    const {[END]: end} = this;
-    let next = {[NEXT]: this};
-    let isOpened = false;
-    do {
-      next = next[NEXT];
-      switch (next.nodeType) {
-        case ATTRIBUTE_NODE: {
-          const attr = ' ' + next;
-          switch (attr) {
-            case ' id':
-            case ' class':
-            case ' style':
-              break;
-            default:
-              out.push(attr);
-          }
-          break;
-        }
-        case NODE_END: {
-          const start = next[START];
-          if (isOpened) {
-            if ('ownerSVGElement' in start)
-              out.push(' />');
-            else if (isVoid(start))
-              out.push(ignoreCase(start) ? '>' : ' />');
-            else
-              out.push(`></${start.localName}>`);
-            isOpened = false;
-          }
-          else
-            out.push(`</${start.localName}>`);
-          break;
-        }
-        case ELEMENT_NODE:
-          if (isOpened)
-            out.push('>');
-          if (next.toString !== this.toString) {
-            out.push(next.toString());
-            next = next[END];
-            isOpened = false;
-          }
-          else {
-            out.push(`<${next.localName}`);
-            isOpened = true;
-          }
-          break;
-        case TEXT_NODE:
-        case COMMENT_NODE:
-        case CDATA_SECTION_NODE:
-          out.push((isOpened ? '>' : '') + next);
-          isOpened = false;
-          break;
-      }
-    } while (next !== end);
-    return out.join('');
-  }
-
   toJSON() {
     const json = [];
     elementAsJSON(this, json);
     return json;
   }
   // </custom>
-
-
-  /* c8 ignore start */
-  getAttributeNS(_, name) { return this.getAttribute(name); }
-  getElementsByTagNameNS(_, name) { return this.getElementsByTagName(name); }
-  hasAttributeNS(_, name) { return this.hasAttribute(name); }
-  removeAttributeNS(_, name) { this.removeAttribute(name); }
-  setAttributeNS(_, name, value) { this.setAttribute(name, value); }
-  setAttributeNodeNS(attr) { return this.setAttributeNode(attr); }
-  /* c8 ignore stop */
 }
 exports.Element = Element

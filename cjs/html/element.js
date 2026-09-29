@@ -1,10 +1,12 @@
 'use strict';
+const {HTML_NAMESPACE} = require('../shared/constants.js');
 const {END, UPGRADE} = require('../shared/symbols.js');
 const {booleanAttribute, stringAttribute} = require('../shared/attributes.js');
 
 const {Event} = require('../interface/event.js');
-const {Element} = require('../interface/element.js');
 const {Classes, customElements} = require('../interface/custom-element-registry.js');
+
+const {ElementCSSInlineStyle} = require('../mixin/element-css-inline-style.js');
 
 const Level0 = new WeakMap;
 const level0 = {
@@ -26,7 +28,7 @@ const level0 = {
 /**
  * @implements globalThis.HTMLElement
  */
-class HTMLElement extends Element {
+class HTMLElement extends ElementCSSInlineStyle {
 
   static get observedAttributes() { return []; }
 
@@ -59,6 +61,8 @@ class HTMLElement extends Element {
         this.setAttribute('is', options.is);
     }
   }
+
+  get namespaceURI() { return HTML_NAMESPACE; }
 
   /* c8 ignore start */
 

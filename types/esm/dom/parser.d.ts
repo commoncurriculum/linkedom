@@ -2,7 +2,7 @@
  * @implements globalThis.DOMParser
  */
 export class DOMParser implements globalThis.DOMParser {
-    /** @typedef {{ "text/html": HTMLDocument, "image/svg+xml": SVGDocument, "text/xml": XMLDocument }} MimeToDoc */
+    /** @typedef {{ "text/html": HTMLDocument, "image/svg+xml": SVGDocument, "text/xml": XMLDocument, "application/xml": XMLDocument, "application/xhtml+xml": XMLDocument }} MimeToDoc */
     /**
      * @template {keyof MimeToDoc} MIME
      * @param {string} markupLanguage
@@ -13,10 +13,14 @@ export class DOMParser implements globalThis.DOMParser {
         "text/html": HTMLDocument;
         "image/svg+xml": SVGDocument;
         "text/xml": XMLDocument;
+        "application/xml": XMLDocument;
+        "application/xhtml+xml": XMLDocument;
     }>(markupLanguage: string, mimeType: MIME, globals?: any): {
         "text/html": HTMLDocument;
         "image/svg+xml": SVGDocument;
         "text/xml": XMLDocument;
+        "application/xml": XMLDocument;
+        "application/xhtml+xml": XMLDocument;
     }[MIME];
 }
 import { HTMLDocument } from '../html/document.js';

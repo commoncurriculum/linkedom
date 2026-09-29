@@ -1,10 +1,12 @@
 'use strict';
-const {isNotParsing} = require('./parse-from-string.js');
-
 const childNodesWM = new WeakMap;
 exports.childNodesWM = childNodesWM;
 const childrenWM = new WeakMap;
 exports.childrenWM = childrenWM;
+const elementsByClassNameWM = new WeakMap;
+exports.elementsByClassNameWM = elementsByClassNameWM;
+const elementsByTagNameWM = new WeakMap;
+exports.elementsByTagNameWM = elementsByTagNameWM;
 const querySelectorWM = new WeakMap;
 exports.querySelectorWM = querySelectorWM;
 const querySelectorAllWM = new WeakMap;
@@ -20,14 +22,14 @@ const get = (wm, self, method) => {
 exports.get = get;
 
 const reset = parentNode => {
-  if (isNotParsing()) {
-    while (parentNode) {
-      childNodesWM.delete(parentNode);
-      childrenWM.delete(parentNode);
-      querySelectorWM.delete(parentNode);
-      querySelectorAllWM.delete(parentNode);
-      parentNode = parentNode.parentNode;
-    }
+  while (parentNode) {
+    childNodesWM.delete(parentNode);
+    childrenWM.delete(parentNode);
+    elementsByClassNameWM.delete(parentNode);
+    elementsByTagNameWM.delete(parentNode);
+    querySelectorWM.delete(parentNode);
+    querySelectorAllWM.delete(parentNode);
+    parentNode = parentNode.parentNode;
   }
 };
 exports.reset = reset;

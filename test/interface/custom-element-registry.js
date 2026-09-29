@@ -235,3 +235,42 @@ assert(document.querySelector('custom-element').isCurrentThisSameAsConstructorTh
 const ceWithoutConstructorArgs = document.querySelector('custom-element-without-constructor-args');
 customElements.define('custom-element-without-constructor-args', class extends HTMLElement {});
 assert(ceWithoutConstructorArgs.localName, 'custom-element-without-constructor-args', 'constructor without args');
+
+{
+  const {document, customElements, HTMLElement, HTMLButtonElement} = parseHTML('<!doctype html><html><body></body></html>');
+  let constructed = 0;
+  class XFoo extends HTMLElement {
+    constructor() { super(); constructed++; }
+  }
+  class MyButton extends HTMLButtonElement {
+    constructor() { super(); constructed++; }
+  }
+  customElements.define('x-foo', XFoo);
+  customElements.define('my-btn', MyButton, {extends: 'button'});
+
+  document.body.innerHTML = '<x-foo a="1" is="bar" b="2"></x-foo><button class="c" is="my-btn" id="i"></button><button is="x-foo"></button><div is="my-btn"></div>';
+  const [foo, button, notFoo, div] = document.body.children;
+  assert(document.body.innerHTML, '<x-foo a="1" is="bar" b="2"></x-foo><button class="c" is="my-btn" id="i"></button><button is="x-foo"></button><div is="my-btn"></div>', 'the parser keeps every attribute, is included, in order');
+  assert(foo instanceof XFoo, true, 'an autonomous custom element ignores its is attribute');
+  assert(button instanceof MyButton, true, 'a customized built-in element');
+  assert(notFoo instanceof XFoo, false, 'is naming an autonomous element does not apply');
+  assert(div instanceof MyButton, false, 'is naming a definition for another element does not apply');
+  assert(constructed, 2, 'each constructor ran once');
+
+  const created = document.createElement('button', {is: 'my-btn'});
+  assert(created instanceof MyButton, true, 'createElement with is');
+  assert(created.outerHTML, '<button is="my-btn"></button>');
+  const createdNS = document.createElementNS('http://www.w3.org/1999/xhtml', 'button', {is: 'my-btn'});
+  assert(createdNS instanceof MyButton, true, 'createElementNS with is');
+  assert(createdNS.outerHTML, '<button is="my-btn"></button>');
+  assert(document.createElement('div', {is: 'my-btn'}) instanceof MyButton, false, 'is only applies to the element it extends');
+  assert(document.createElementNS('urn:x', 'x-foo') instanceof XFoo, false, 'custom elements are HTML elements only');
+  assert(document.createElement('X-FOO') instanceof XFoo, true, 'createElement lowercases before looking the name up');
+  assert(document.createElementNS('http://www.w3.org/1999/xhtml', 'X-FOO') instanceof XFoo, false, 'createElementNS does not');
+
+  constructed = 0;
+  assert(button.cloneNode(true) instanceof MyButton, true, 'a clone of a customized built-in is one too');
+  assert(foo.cloneNode() instanceof XFoo, true, 'a clone of an autonomous custom element is one too');
+  assert(button.cloneNode(true).outerHTML, button.outerHTML);
+  assert(constructed, 3, 'clones run the constructor');
+}

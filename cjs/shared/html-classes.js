@@ -67,6 +67,9 @@ const {HTMLDetailsElement} = require('../html/details-element.js');
 const {HTMLSourceElement} = require('../html/source-element.js');
 const {HTMLTrackElement} = require('../html/track-element.js');
 const {HTMLMarqueeElement} = require('../html/marquee-element.js');
+const {HTMLTableColElement} = require('../html/table-col-element.js');
+const {HTMLTableSectionElement} = require('../html/table-section-element.js');
+const {HTMLDialogElement} = require('../html/dialog-element.js');
 
 exports.HTMLElement = HTMLElement;
 exports.HTMLTemplateElement = HTMLTemplateElement;
@@ -136,6 +139,9 @@ exports.HTMLDetailsElement = HTMLDetailsElement;
 exports.HTMLSourceElement = HTMLSourceElement;
 exports.HTMLTrackElement = HTMLTrackElement;
 exports.HTMLMarqueeElement = HTMLMarqueeElement;
+exports.HTMLTableColElement = HTMLTableColElement;
+exports.HTMLTableSectionElement = HTMLTableSectionElement;
+exports.HTMLDialogElement = HTMLDialogElement;
 
 const HTMLClasses = {
   HTMLElement,
@@ -205,6 +211,9 @@ const HTMLClasses = {
   HTMLDetailsElement,
   HTMLSourceElement,
   HTMLTrackElement,
-  HTMLMarqueeElement
+  HTMLMarqueeElement,
+  HTMLTableColElement,
+  HTMLTableSectionElement,
+  HTMLDialogElement
 };
 exports.HTMLClasses = HTMLClasses;

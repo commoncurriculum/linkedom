@@ -1,25 +1,33 @@
-import {OWNER_ELEMENT} from '../shared/symbols.js';
+import {OWNER_ELEMENT, RESET} from '../shared/symbols.js';
 import {setAttribute} from '../shared/attributes.js';
 
 import {Attr} from '../interface/attr.js';
 
-const {add} = Set.prototype;
-const addTokens = (self, tokens) => {
-  for (const token of tokens) {
-    if (token)
-      add.call(self, token);
-  }
+const {add, clear} = Set.prototype;
+const asciiWhitespace = /[\t\n\f\r ]/;
+const asciiWhitespaces = /[\t\n\f\r ]+/;
+
+const classAttribute = ownerElement => ownerElement.getAttributeNodeNS(null, 'class');
+
+const valid = token => {
+  token = String(token);
+  if (!token)
+    throw new DOMException('The token must not be empty.', 'SyntaxError');
+  if (asciiWhitespace.test(token))
+    throw new DOMException('The token must not contain whitespace.', 'InvalidCharacterError');
+  return token;
 };
 
-const update = ({[OWNER_ELEMENT]: ownerElement, value}) => {
-  const attribute = ownerElement.getAttributeNode('class');
+const update = self => {
+  const ownerElement = self[OWNER_ELEMENT];
+  const attribute = classAttribute(ownerElement);
+  if (!attribute && !self.size)
+    return;
+  const value = [...self].join(' ');
   if (attribute)
     attribute.value = value;
   else
-    setAttribute(
-      ownerElement,
-      new Attr(ownerElement.ownerDocument, 'class', value)
-    );
+    setAttribute(ownerElement, new Attr(ownerElement.ownerDocument, 'class', value));
 };
 
 /**
@@ -30,33 +38,53 @@ export class DOMTokenList extends Set {
   constructor(ownerElement) {
     super();
     this[OWNER_ELEMENT] = ownerElement;
-    const attribute = ownerElement.getAttributeNode('class');
+    const attribute = classAttribute(ownerElement);
     if (attribute)
-      addTokens(this, attribute.value.split(/\s+/));
+      this[RESET](attribute.value);
+  }
+
+  [RESET](value) {
+    clear.call(this);
+    for (const token of (value || '').split(asciiWhitespaces)) {
+      if (token)
+        add.call(this, token);
+    }
   }
 
   get length() { return this.size; }
 
-  get value() { return [...this].join(' '); }
+  get value() {
+    const attribute = classAttribute(this[OWNER_ELEMENT]);
+    return attribute ? attribute.value : '';
+  }
+
+  set value(value) {
+    this[OWNER_ELEMENT].setAttribute('class', value);
+  }
+
+  item(index) {
+    return [...this][index] ?? null;
+  }
 
   /**
    * @param  {...string} tokens
    */
   add(...tokens) {
-    addTokens(this, tokens);
+    for (const token of tokens.map(valid))
+      add.call(this, token);
     update(this);
   }
 
   /**
    * @param {string} token
    */
-  contains(token) { return this.has(token); }
+  contains(token) { return this.has(String(token)); }
 
   /**
    * @param  {...string} tokens
    */
   remove(...tokens) {
-    for (const token of tokens)
+    for (const token of tokens.map(valid))
       this.delete(token);
     update(this);
   }
@@ -66,6 +94,7 @@ export class DOMTokenList extends Set {
    * @param {boolean?} force
    */
   toggle(token, force) {
+    token = valid(token);
     if (this.has(token)) {
       if (force)
         return true;
@@ -73,7 +102,7 @@ export class DOMTokenList extends Set {
       update(this);
     }
     else if (force || arguments.length === 1) {
-      super.add(token);
+      add.call(this, token);
       update(this);
       return true;
     }
@@ -85,17 +114,22 @@ export class DOMTokenList extends Set {
    * @param {string} newToken
    */
   replace(token, newToken) {
-    if (this.has(token)) {
-      this.delete(token);
-      super.add(newToken);
-      update(this);
-      return true;
-    }
-    return false;
+    token = valid(token);
+    newToken = valid(newToken);
+    if (!this.has(token))
+      return false;
+    const tokens = [...this];
+    clear.call(this);
+    for (const current of tokens)
+      add.call(this, current === token ? newToken : current);
+    update(this);
+    return true;
   }
 
   /**
    * @param {string} token
    */
   supports() { return true; }
+
+  toString() { return this.value; }
 }

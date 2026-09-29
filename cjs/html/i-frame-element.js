@@ -1,5 +1,4 @@
 'use strict';
-const {registerHTMLClass} = require('../shared/register-html-class.js');
 const {booleanAttribute, stringAttribute} = require('../shared/attributes.js');
 
 const {HTMLElement} = require('./element.js');
@@ -37,7 +36,5 @@ class HTMLIFrameElement extends HTMLElement {
   set loading(value) { stringAttribute.set(this, "loading", value); }
   /* c8 ignore stop */
 }
-
-registerHTMLClass(tagName, HTMLIFrameElement);
 
 exports.HTMLIFrameElement = HTMLIFrameElement;

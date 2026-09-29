@@ -66,6 +66,9 @@ import {HTMLDetailsElement} from '../html/details-element.js';
 import {HTMLSourceElement} from '../html/source-element.js';
 import {HTMLTrackElement} from '../html/track-element.js';
 import {HTMLMarqueeElement} from '../html/marquee-element.js';
+import {HTMLTableColElement} from '../html/table-col-element.js';
+import {HTMLTableSectionElement} from '../html/table-section-element.js';
+import {HTMLDialogElement} from '../html/dialog-element.js';
 
 export {
   HTMLElement,
@@ -135,7 +138,10 @@ export {
   HTMLDetailsElement,
   HTMLSourceElement,
   HTMLTrackElement,
-  HTMLMarqueeElement
+  HTMLMarqueeElement,
+  HTMLTableColElement,
+  HTMLTableSectionElement,
+  HTMLDialogElement
 };
 
 export const HTMLClasses = {
@@ -206,5 +212,8 @@ export const HTMLClasses = {
   HTMLDetailsElement,
   HTMLSourceElement,
   HTMLTrackElement,
-  HTMLMarqueeElement
+  HTMLMarqueeElement,
+  HTMLTableColElement,
+  HTMLTableSectionElement,
+  HTMLDialogElement
 };

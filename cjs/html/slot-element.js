@@ -1,6 +1,5 @@
 'use strict';
 const {HTMLElement} = require('./element.js');
-const {registerHTMLClass} = require('../shared/register-html-class.js');
 
 const tagName = 'slot';
 
@@ -56,7 +55,5 @@ class HTMLSlotElement extends HTMLElement {
   }
   /* c8 ignore stop */
 }
-
-registerHTMLClass(tagName, HTMLSlotElement);
 
 exports.HTMLSlotElement = HTMLSlotElement;

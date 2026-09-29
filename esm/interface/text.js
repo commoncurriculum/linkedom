@@ -1,6 +1,5 @@
 import {TEXT_NODE} from '../shared/constants.js';
 import {VALUE} from '../shared/symbols.js';
-import {escape} from '../shared/text-escaper.js';
 
 import {CharacterData} from './character-data.js';
 
@@ -32,11 +31,4 @@ export class Text extends CharacterData {
     }
     return text.join('');
   }
-
-  cloneNode() {
-    const {ownerDocument, [VALUE]: data} = this;
-    return new Text(ownerDocument, data);
-  }
-
-  toString() { return escape(this[VALUE]); }
 }

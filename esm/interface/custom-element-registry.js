@@ -1,5 +1,5 @@
-import {ELEMENT_NODE} from '../shared/constants.js';
-import {END, NEXT, UPGRADE} from '../shared/symbols.js';
+import {ELEMENT_NODE, HTML_NAMESPACE} from '../shared/constants.js';
+import {CUSTOM_ELEMENTS, END, NEXT, UPGRADE} from '../shared/symbols.js';
 import {entries, setPrototypeOf} from '../shared/object.js';
 import {shadowRoots} from '../shared/shadow-roots.js';
 
@@ -8,6 +8,58 @@ let reactive = false;
 export const Classes = new WeakMap;
 
 export const customElements = new WeakMap;
+
+// https://html.spec.whatwg.org/multipage/custom-elements.html#look-up-a-custom-element-definition
+const lookUp = ({registry}, localName, is) => {
+  for (const name of [localName, is]) {
+    const definition = name && registry.get(name);
+    if (definition && definition.localName === localName)
+      return definition;
+  }
+  return null;
+};
+
+/**
+ * @param {Document} document
+ * @param {Element} element a new HTML element
+ * @param {string?} is
+ */
+export const constructCustomElement = (document, element, is) => {
+  const registry = document[CUSTOM_ELEMENTS];
+  const definition = lookUp(registry, element.localName, is);
+  if (definition) {
+    const {Class} = definition;
+    // HTMLElement's constructor looks for the element on the document that defined its class,
+    // which a cloned document sharing the registry is not.
+    const {ownerDocument} = registry;
+    setPrototypeOf(element, Class.prototype);
+    ownerDocument[UPGRADE] = {element, values: []};
+    new Class(ownerDocument, element.localName);
+    customElements.set(element, {connected: false});
+  }
+};
+
+/**
+ * https://dom.spec.whatwg.org/#concept-node-clone creates elements without their
+ * definition and upgrades them once they have their attributes.
+ * @param {Document} document
+ * @param {Element} element a clone and its descendants
+ */
+export const upgradeClone = (document, element) => {
+  const registry = document[CUSTOM_ELEMENTS];
+  if (registry.active) {
+    const end = element[END];
+    for (let next = element; next !== end; next = next[NEXT]) {
+      if (next.nodeType === ELEMENT_NODE && next.namespaceURI === HTML_NAMESPACE)
+        registry.upgrade(next);
+    }
+  }
+};
+
+export const adoptedCallback = (element, oldDocument, newDocument) => {
+  if (reactive && customElements.has(element) && element.adoptedCallback)
+    element.adoptedCallback(oldDocument, newDocument);
+};
 
 export const attributeChangedCallback = (element, attributeName, oldValue, newValue) => {
   if (
@@ -115,13 +167,7 @@ export class CustomElementRegistry {
       localName: extend || localName
     });
 
-    const check = extend ?
-      element => {
-        return element.localName === extend &&
-               element.getAttribute('is') === localName;
-      } :
-      element => element.localName === localName;
-    registry.set(localName, {Class, check});
+    registry.set(localName, {Class, localName: extend || localName});
     if (waiting.has(localName)) {
       for (const resolve of waiting.get(localName))
         resolve(Class);
@@ -138,31 +184,29 @@ export class CustomElementRegistry {
   upgrade(element) {
     if (customElements.has(element))
       return;
-    const {ownerDocument, registry} = this;
-    const ce = element.getAttribute('is') || element.localName;
-    if (registry.has(ce)) {
-      const {Class, check} = registry.get(ce);
-      if (check(element)) {
-        const {attributes, isConnected} = element;
-        for (const attr of attributes)
-          element.removeAttributeNode(attr);
+    const {ownerDocument} = this;
+    const definition = lookUp(this, element.localName, element.getAttribute('is'));
+    if (definition) {
+      const {Class} = definition;
+      const {attributes, isConnected} = element;
+      for (const attr of attributes)
+        element.removeAttributeNode(attr);
 
-        const values = entries(element);
-        for (const [key] of values)
-          delete element[key];
+      const values = entries(element);
+      for (const [key] of values)
+        delete element[key];
 
-        setPrototypeOf(element, Class.prototype);
-        ownerDocument[UPGRADE] = {element, values};
-        new Class(ownerDocument, ce);
+      setPrototypeOf(element, Class.prototype);
+      ownerDocument[UPGRADE] = {element, values};
+      new Class(ownerDocument, element.localName);
 
-        customElements.set(element, {connected: isConnected});
+      customElements.set(element, {connected: isConnected});
 
-        for (const attr of attributes)
-          element.setAttributeNode(attr);
+      for (const attr of attributes)
+        element.setAttributeNode(attr);
 
-        if (isConnected && element.connectedCallback)
-          element.connectedCallback();
-      }
+      if (isConnected && element.connectedCallback)
+        element.connectedCallback();
     }
   }
 

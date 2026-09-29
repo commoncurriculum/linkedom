@@ -3,6 +3,8 @@
  */
 export class HTMLSelectElement extends HTMLElement implements globalThis.HTMLSelectElement {
     get options(): NodeList;
+    set multiple(value: any);
+    get multiple(): any;
     set disabled(value: any);
     get disabled(): any;
     set name(value: any);

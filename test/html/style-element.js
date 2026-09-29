@@ -4,7 +4,7 @@ const {parseHTML} = global[Symbol.for('linkedom')];
 
 let {document} = parseHTML('<style></style>');
 
-let {firstElementChild: style} = document;
+let {firstElementChild: style} = document.head;
 
 assert(style.toString(), '<style></style>');
 assert(style.sheet != null, true, 'style.sheet');

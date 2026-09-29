@@ -1,30 +1,20 @@
 'use strict';
-const {ELEMENT_NODE} = require('../shared/constants.js');
-const {CUSTOM_ELEMENTS, END, NEXT} = require('../shared/symbols.js');
-const {htmlClasses} = require('../shared/register-html-class.js');
+const {ELEMENT_NODE, HTML_NAMESPACE} = require('../shared/constants.js');
+const {END, NEXT} = require('../shared/symbols.js');
 
 const {Document} = require('../interface/document.js');
 const {NodeList} = require('../interface/node-list.js');
-const {customElements} = require('../interface/custom-element-registry.js');
 
-const {HTMLElement} = require('./element.js');
+const asciiWhitespace = /[\t\n\f\r ]+/g;
 
-const createHTMLElement = (ownerDocument, builtin, localName, options) => {
-  if (!builtin && htmlClasses.has(localName)) {
-    const Class = htmlClasses.get(localName);
-    return new Class(ownerDocument, localName);
-  }
-  const {[CUSTOM_ELEMENTS]: {active, registry}} = ownerDocument;
-  if (active) {
-    const ce = builtin ? options.is : localName;
-    if (registry.has(ce)) {
-      const {Class} = registry.get(ce);
-      const element = new Class(ownerDocument, localName);
-      customElements.set(element, {connected: false});
-      return element;
+const htmlChild = ({documentElement}, matches) => {
+  if (documentElement && documentElement.localName === 'html') {
+    for (const child of documentElement.children) {
+      if (matches(child.localName) && child.namespaceURI === HTML_NAMESPACE)
+        return child;
     }
   }
-  return new HTMLElement(ownerDocument, localName);
+  return null;
 };
 
 /**
@@ -48,58 +38,36 @@ class HTMLDocument extends Document {
   }
 
   /**
-   * @type HTMLHeadElement
+   * @type HTMLHeadElement?
    */
   get head() {
-    const {documentElement} = this;
-    let {firstElementChild} = documentElement;
-    if (!firstElementChild || firstElementChild.tagName !== 'HEAD') {
-      firstElementChild = this.createElement('head');
-      documentElement.prepend(firstElementChild);
-    }
-    return firstElementChild;
+    return htmlChild(this, name => name === 'head');
   }
 
   /**
-   * @type HTMLBodyElement
+   * @type HTMLBodyElement?
    */
   get body() {
-    const {head} = this;
-    let {nextElementSibling} = head;
-    if (!nextElementSibling || nextElementSibling.tagName !== 'BODY') {
-      nextElementSibling = this.createElement('body');
-      head.after(nextElementSibling);
-    }
-    return nextElementSibling;
+    return htmlChild(this, name => name === 'body' || name === 'frameset');
   }
 
   /**
-   * @type HTMLTitleElement
+   * @type string
    */
   get title() {
-    const {head} = this;
-    return head.getElementsByTagName('title').at(0)?.textContent || '';
+    const title = this.getElementsByTagName('title').at(0);
+    return title ? title.textContent.replace(asciiWhitespace, ' ').trim() : '';
   }
 
   set title(textContent) {
     const {head} = this;
-    let title = head.getElementsByTagName('title').at(0);
-    if (title)
-      title.textContent = textContent;
-    else {
-      head.insertBefore(
-        this.createElement('title'),
-        head.firstChild
-      ).textContent = textContent;
+    let title = this.getElementsByTagName('title').at(0);
+    if (!title) {
+      if (!head)
+        return;
+      title = head.appendChild(this.createElement('title'));
     }
-  }
-
-  createElement(localName, options) {
-    const builtin = !!(options && options.is);
-    const element = createHTMLElement(this, builtin, localName, options);
-    if (builtin)
-      element.setAttribute('is', options.is);
-    return element;
+    title.textContent = textContent;
   }
 }
 exports.HTMLDocument = HTMLDocument

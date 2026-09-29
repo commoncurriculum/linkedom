@@ -67,6 +67,9 @@ export namespace HTMLClasses {
     export { HTMLSourceElement };
     export { HTMLTrackElement };
     export { HTMLMarqueeElement };
+    export { HTMLTableColElement };
+    export { HTMLTableSectionElement };
+    export { HTMLDialogElement };
 }
 import { HTMLElement } from '../html/element.js';
 import { HTMLTemplateElement } from '../html/template-element.js';
@@ -136,4 +139,7 @@ import { HTMLDetailsElement } from '../html/details-element.js';
 import { HTMLSourceElement } from '../html/source-element.js';
 import { HTMLTrackElement } from '../html/track-element.js';
 import { HTMLMarqueeElement } from '../html/marquee-element.js';
-export { HTMLElement, HTMLTemplateElement, HTMLHtmlElement, HTMLScriptElement, HTMLFrameElement, HTMLIFrameElement, HTMLObjectElement, HTMLHeadElement, HTMLBodyElement, HTMLStyleElement, HTMLTimeElement, HTMLFieldSetElement, HTMLEmbedElement, HTMLHRElement, HTMLProgressElement, HTMLParagraphElement, HTMLTableElement, HTMLFrameSetElement, HTMLLIElement, HTMLBaseElement, HTMLDataListElement, HTMLInputElement, HTMLParamElement, HTMLMediaElement, HTMLAudioElement, HTMLHeadingElement, HTMLDirectoryElement, HTMLQuoteElement, HTMLCanvasElement, HTMLLegendElement, HTMLOptionElement, HTMLSpanElement, HTMLMeterElement, HTMLVideoElement, HTMLTableCellElement, HTMLTitleElement, HTMLOutputElement, HTMLTableRowElement, HTMLDataElement, HTMLMenuElement, HTMLSelectElement, HTMLBRElement, HTMLButtonElement, HTMLMapElement, HTMLOptGroupElement, HTMLDListElement, HTMLTextAreaElement, HTMLFontElement, HTMLDivElement, HTMLLinkElement, HTMLSlotElement, HTMLFormElement, HTMLImageElement, HTMLPreElement, HTMLUListElement, HTMLMetaElement, HTMLPictureElement, HTMLAreaElement, HTMLOListElement, HTMLTableCaptionElement, HTMLAnchorElement, HTMLLabelElement, HTMLUnknownElement, HTMLModElement, HTMLDetailsElement, HTMLSourceElement, HTMLTrackElement, HTMLMarqueeElement };
+import { HTMLTableColElement } from '../html/table-col-element.js';
+import { HTMLTableSectionElement } from '../html/table-section-element.js';
+import { HTMLDialogElement } from '../html/dialog-element.js';
+export { HTMLElement, HTMLTemplateElement, HTMLHtmlElement, HTMLScriptElement, HTMLFrameElement, HTMLIFrameElement, HTMLObjectElement, HTMLHeadElement, HTMLBodyElement, HTMLStyleElement, HTMLTimeElement, HTMLFieldSetElement, HTMLEmbedElement, HTMLHRElement, HTMLProgressElement, HTMLParagraphElement, HTMLTableElement, HTMLFrameSetElement, HTMLLIElement, HTMLBaseElement, HTMLDataListElement, HTMLInputElement, HTMLParamElement, HTMLMediaElement, HTMLAudioElement, HTMLHeadingElement, HTMLDirectoryElement, HTMLQuoteElement, HTMLCanvasElement, HTMLLegendElement, HTMLOptionElement, HTMLSpanElement, HTMLMeterElement, HTMLVideoElement, HTMLTableCellElement, HTMLTitleElement, HTMLOutputElement, HTMLTableRowElement, HTMLDataElement, HTMLMenuElement, HTMLSelectElement, HTMLBRElement, HTMLButtonElement, HTMLMapElement, HTMLOptGroupElement, HTMLDListElement, HTMLTextAreaElement, HTMLFontElement, HTMLDivElement, HTMLLinkElement, HTMLSlotElement, HTMLFormElement, HTMLImageElement, HTMLPreElement, HTMLUListElement, HTMLMetaElement, HTMLPictureElement, HTMLAreaElement, HTMLOListElement, HTMLTableCaptionElement, HTMLAnchorElement, HTMLLabelElement, HTMLUnknownElement, HTMLModElement, HTMLDetailsElement, HTMLSourceElement, HTMLTrackElement, HTMLMarqueeElement, HTMLTableColElement, HTMLTableSectionElement, HTMLDialogElement };

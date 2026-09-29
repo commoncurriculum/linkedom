@@ -1,5 +1,4 @@
 import {HTMLElement} from './element.js';
-import {registerHTMLClass} from '../shared/register-html-class.js';
 
 const tagName = 'slot';
 
@@ -55,7 +54,5 @@ class HTMLSlotElement extends HTMLElement {
   }
   /* c8 ignore stop */
 }
-
-registerHTMLClass(tagName, HTMLSlotElement);
 
 export {HTMLSlotElement};

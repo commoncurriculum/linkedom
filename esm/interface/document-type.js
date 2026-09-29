@@ -1,4 +1,5 @@
 import {DOCUMENT_TYPE_NODE} from '../shared/constants.js';
+import {CLONE} from '../shared/symbols.js';
 import {documentTypeAsJSON} from '../shared/jsdon.js';
 
 import {Node} from './node.js';
@@ -14,23 +15,9 @@ export class DocumentType extends Node {
     this.systemId = systemId;
   }
 
-  cloneNode() {
-    const {ownerDocument, name, publicId, systemId} = this;
-    return new DocumentType(ownerDocument, name, publicId, systemId);
-  }
-
-  toString() {
+  [CLONE](document) {
     const {name, publicId, systemId} = this;
-    const hasPublic = 0 < publicId.length;
-    const str = [name];
-    if (hasPublic)
-      str.push('PUBLIC', `"${publicId}"`);
-    if (systemId.length) {
-      if (!hasPublic)
-        str.push('SYSTEM');
-      str.push(`"${systemId}"`);
-    }
-    return `<!DOCTYPE ${str.join(' ')}>`;
+    return new DocumentType(document, name, publicId, systemId);
   }
 
   toJSON() {

@@ -15,6 +15,6 @@ clone.setAttribute('id', 'active');
 // console.log(clone.attributes[0].ownerElement === clone);
 // console.log(clone.attributes[1].ownerElement === clone);
 
-assert(clone.toString(), '<div id="active" class="active"></div>');
+assert(clone.toString(), '<div class="active" id="active"></div>');
 assert(clone.attributes[0].ownerElement, clone);
 assert(clone.attributes[1].ownerElement, clone);

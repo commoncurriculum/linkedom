@@ -1,5 +1,5 @@
-import {registerHTMLClass} from '../shared/register-html-class.js';
 import {stringAttribute} from '../shared/attributes.js';
+import {hyperlinkHref} from '../shared/url.js';
 
 import {HTMLElement} from './element.js';
 
@@ -13,12 +13,12 @@ class HTMLAnchorElement extends HTMLElement {
     super(ownerDocument, localName);
   }
 
-  /* c8 ignore start */ // copy paste from img.src, already covered
-  get href() { return encodeURI(decodeURI(stringAttribute.get(this, 'href'))).trim(); }
-  set href(value) { stringAttribute.set(this, 'href', decodeURI(value)); }
+  get href() { return hyperlinkHref(this); }
+  set href(value) { stringAttribute.set(this, 'href', value); }
 
-  get download() { return encodeURI(decodeURI(stringAttribute.get(this, 'download'))); }
-  set download(value) { stringAttribute.set(this, 'download', decodeURI(value)); }
+  /* c8 ignore start */
+  get download() { return stringAttribute.get(this, 'download'); }
+  set download(value) { stringAttribute.set(this, 'download', value); }
 
   get target() { return stringAttribute.get(this, 'target'); }
   set target(value) { stringAttribute.set(this, 'target', value); }
@@ -31,7 +31,5 @@ class HTMLAnchorElement extends HTMLElement {
   /* c8 ignore stop */
 
 }
-
-registerHTMLClass(tagName, HTMLAnchorElement);
 
 export {HTMLAnchorElement};

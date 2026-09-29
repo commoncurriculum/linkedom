@@ -9,6 +9,7 @@ export function Node(): void;
 export function ShadowRoot(): void;
 export function Text(): void;
 export function SVGElement(): void;
+export function MathMLElement(): void;
 export function illegalConstructor(): never;
 export namespace Facades {
     export { Attr };
@@ -22,4 +23,5 @@ export namespace Facades {
     export { ShadowRoot };
     export { Text };
     export { SVGElement };
+    export { MathMLElement };
 }

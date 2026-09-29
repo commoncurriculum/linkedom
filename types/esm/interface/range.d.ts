@@ -14,7 +14,7 @@ export class Range implements globalThis.Range {
     cloneContents(): any;
     deleteContents(): void;
     extractContents(): any;
-    createContextualFragment(html: any): import("./document-fragment.js").DocumentFragment;
+    createContextualFragment(html: any): DocumentFragment;
     cloneRange(): Range;
     [START]: any;
     [END]: any;

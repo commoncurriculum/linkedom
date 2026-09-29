@@ -1,128 +1,139 @@
-import uhyphen from 'uhyphen';
+import {Declarations, initSync, propertyNames} from '../shared/css/engine.js';
+import bytes from '../shared/css/bytes.js';
+import {RESET, STYLE} from '../shared/symbols.js';
 
-import {CHANGED, PRIVATE, VALUE} from '../shared/symbols.js';
+import {toDOMString} from './attr.js';
 
-const refs = new WeakMap;
+const ELEMENT = Symbol('element');
+const DECLARATIONS = Symbol('declarations');
+const INDICES = Symbol('indices');
+const TEXT = Symbol('text');
 
-const getKeys = style => [...style.keys()].filter(key => key !== PRIVATE);
+const nullable = value => value === null ? '' : toDOMString(value);
 
-const updateKeys = style => {
-  const attr = refs.get(style).getAttributeNode('style');
-  if (!attr || attr[CHANGED] || style.get(PRIVATE) !== attr) {
-    style.clear();
-    if (attr) {
-      style.set(PRIVATE, attr);
-      for (const rule of attr[VALUE].split(/\s*;\s*/)) {
-        let [key, ...rest] = rule.split(':');
-        if (rest.length > 0) {
-          key = key.trim();
-          const value = rest.join(':').trim();
-          if (key && value)
-            style.set(key, value);
-        }
-      }
-    }
-  }
-  return attr;
+// https://drafts.csswg.org/cssom/#css-property-to-idl-attribute
+const idlAttribute = (property, lowercaseFirst) => {
+  const name = lowercaseFirst ? property.slice(1) : property;
+  return name.replace(/-(.)/g, (_, character) => character.toUpperCase());
 };
 
-const handler = {
-  get(style, name) {
-    if (name in prototype)
-      return style[name];
-    updateKeys(style);
-    if (name === 'length')
-      return getKeys(style).length;
-    if (/^\d+$/.test(name))
-      return getKeys(style)[name];
-    return style.get(uhyphen(name)) ?? '';
-  },
+const defineProperty = (name, property) => {
+  if (!(name in CSSStyleDeclaration.prototype))
+    Object.defineProperty(CSSStyleDeclaration.prototype, name, {
+      configurable: true,
+      enumerable: true,
+      get() { return this.getPropertyValue(property); },
+      set(value) { this.setProperty(property, value); }
+    });
+};
 
-  set(style, name, value) {
-    if (name === 'cssText')
-      style[name] = value;
-    else {
-      let attr = updateKeys(style);
-      if (value == null)
-        style.delete(uhyphen(name));
-      else
-        style.set(uhyphen(name), value);
-      if (!attr) {
-        const element = refs.get(style);
-        attr = element.ownerDocument.createAttribute('style');
-        element.setAttributeNode(attr);
-        style.set(PRIVATE, attr);
-      }
-      attr[CHANGED] = false;
-      attr[VALUE] = style.toString();
-    }
-    return true;
+let started = false;
+const start = () => {
+  initSync({module: bytes()});
+  // https://drafts.csswg.org/cssom/#the-cssstyleproperties-interface
+  for (const property of propertyNames()) {
+    defineProperty(idlAttribute(property, false), property);
+    if (property.startsWith('-webkit-'))
+      defineProperty(idlAttribute(property, true), property);
+    if (property.includes('-'))
+      defineProperty(property, property);
   }
+  started = true;
+};
+
+// Browsers expose the declared names as indexed properties too.
+const indexed = style => {
+  const names = style[DECLARATIONS].names();
+  for (let i = names.length; i < style[INDICES]; i++)
+    delete style[i];
+  for (let i = 0; i < names.length; i++)
+    style[i] = names[i];
+  style[INDICES] = names.length;
+};
+
+// Setting TEXT first makes the attribute change this causes a no-op in RESET.
+const changed = style => {
+  indexed(style);
+  style[TEXT] = style[DECLARATIONS].cssText();
+  style[ELEMENT].setAttribute('style', style[TEXT]);
 };
 
 /**
  * @implements globalThis.CSSStyleDeclaration
  */
-export class CSSStyleDeclaration extends Map {
+export class CSSStyleDeclaration {
   constructor(element) {
-    super();
-    refs.set(this, element);
-    /* c8 ignore start */
-    return new Proxy(this, handler);
-    /* c8 ignore stop */
+    const text = element.getAttributeNS(null, 'style') || '';
+    this[ELEMENT] = element;
+    this[DECLARATIONS] = new Declarations(text);
+    this[TEXT] = text;
+    this[INDICES] = 0;
+    indexed(this);
   }
 
-  get cssText() {
-    return this.toString();
+  [RESET](value) {
+    const text = value || '';
+    if (text !== this[TEXT]) {
+      this[DECLARATIONS].free();
+      this[DECLARATIONS] = new Declarations(text);
+      this[TEXT] = text;
+      indexed(this);
+    }
   }
 
+  get cssText() { return this[DECLARATIONS].cssText(); }
   set cssText(value) {
-    refs.get(this).setAttribute('style', value);
+    this[DECLARATIONS].free();
+    this[DECLARATIONS] = new Declarations(nullable(value));
+    changed(this);
   }
 
-  getPropertyValue(name) {
-    const self = this[PRIVATE];
-    return handler.get(self, name);
+  get length() { return this[DECLARATIONS].length; }
+
+  get parentRule() { return null; }
+
+  get cssFloat() { return this.getPropertyValue('float'); }
+  set cssFloat(value) { this.setProperty('float', value); }
+
+  item(index) {
+    return this[index >>> 0] ?? '';
   }
 
-  setProperty(name, value) {
-    const self = this[PRIVATE];
-    handler.set(self, name, value);
+  getPropertyValue(property) {
+    return this[DECLARATIONS].value(toDOMString(property));
   }
 
-  removeProperty(name) {
-    const self = this[PRIVATE];
-    handler.set(self, name, null);
+  getPropertyPriority(property) {
+    return this[DECLARATIONS].priority(toDOMString(property));
   }
 
-  [Symbol.iterator]() {
-    const self = this[PRIVATE];
-    updateKeys(self);
-    const keys = getKeys(self);
-    const {length} = keys;
-    let i = 0;
-    return {
-      next() {
-        const done = i === length;
-        return {done, value: done ? null : keys[i++]};
-      }
-    };
+  setProperty(property, value, priority = '') {
+    if (this[DECLARATIONS].set(toDOMString(property), nullable(value), nullable(priority)))
+      changed(this);
   }
 
-  get[PRIVATE]() { return this; }
-
-  toString() {
-    const self = this[PRIVATE];
-    updateKeys(self);
-    const cssText = [];
-    self.forEach(push, cssText);
-    return cssText.join(';');
+  removeProperty(property) {
+    const value = this[DECLARATIONS].remove(toDOMString(property));
+    if (value === undefined)
+      return '';
+    changed(this);
+    return value;
   }
+
+  *[Symbol.iterator]() {
+    for (let i = 0; i < this.length; i++)
+      yield this.item(i);
+  }
+
+  get [Symbol.toStringTag]() { return 'CSSStyleDeclaration'; }
 }
 
-const {prototype} = CSSStyleDeclaration;
-
-function push(value, key) {
-  if (key !== PRIVATE)
-    this.push(`${key}:${value}`);
-}
+/**
+ * @param {Element} element
+ * @returns {CSSStyleDeclaration} the declarations of the element's style attribute
+ */
+export const styleOf = element => {
+  if (!started)
+    start();
+  return element[STYLE] || (element[STYLE] = new CSSStyleDeclaration(element));
+};

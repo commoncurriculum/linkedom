@@ -4,6 +4,20 @@
 
 <sup>**Social Media Photo by [JJ Ying](https://unsplash.com/@jjying) on [Unsplash](https://unsplash.com/)**</sup>
 
+### This fork
+
+This is Common Curriculum's fork, which keeps linkedom's linked list and speed but builds and writes documents as the standards say, so that a Rust DOM ([tarnish-html](https://github.com/commoncurriculum/tarnish)) can match it byte for byte:
+
+  * **HTML** parses with [parse5](https://github.com/inikulin/parse5) 8's tree builder, scripting off, and serializes with the standard's fragment serialization algorithm.
+  * **XML** parses with [saxes](https://github.com/lddubeau/saxes) and serializes with [w3c-xmlserializer](https://github.com/jsdom/w3c-xmlserializer).
+  * **Names, attributes and namespaces** follow the DOM standard, with jsdom 30's error messages: attributes keep their insertion order, elements have their namespace, prefix and interface, and `href` resolves as the URL standard does.
+  * **Documents** keep the content type they were created with, and `document.implementation` creates them as jsdom's does. Every node belongs to its document: clones, imports and insertions adopt their nodes, and template contents belong to a document of their own, with no window, where no custom element is constructed.
+  * **`element.style`** is [tarnish-css](https://github.com/commoncurriculum/tarnish/tree/main/crates/tarnish-css): [stylo](https://github.com/servo/stylo), Servo's and Firefox's CSS engine (MPL-2.0), compiled to WebAssembly. Declarations parse, change and serialize as Firefox's do, as in a no-quirks document. `esm/shared/css/` is generated: rebuild it with tarnish's `node harness/css-wasm.mjs <this checkout>`. Its `THIRD-PARTY.md` lists the crates compiled into `engine.wasm`, with their licences and sources.
+
+Where it differs from jsdom 30, it follows the standard or the browsers: duplicate `<html>` and `<body>` attributes don't overwrite, `<search>` is an `HTMLElement`, MathML elements have `style`, and a `<noscript>` parses its content as elements wherever it is.
+
+Where it differs from the standard: every SVG element is an `SVGElement`, where the SVG standard gives most of them an interface of their own, such as `SVGSVGElement` or `SVGRectElement`.
+
 ### This is not a crawler!
 
 LinkeDOM is a [triple-linked list](#data-structure) based DOM-like namespace, for DOM-less environments, with the following goals:

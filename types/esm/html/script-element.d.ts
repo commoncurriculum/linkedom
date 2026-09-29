@@ -1,7 +1,7 @@
 /**
  * @implements globalThis.HTMLScriptElement
  */
-export class HTMLScriptElement extends TextElement implements globalThis.HTMLScriptElement {
+export class HTMLScriptElement extends HTMLElement implements globalThis.HTMLScriptElement {
     set type(value: any);
     get type(): any;
     set src(value: any);
@@ -19,4 +19,4 @@ export class HTMLScriptElement extends TextElement implements globalThis.HTMLScr
     set text(content: string);
     get text(): string;
 }
-import { TextElement } from './text-element.js';
+import { HTMLElement } from './element.js';

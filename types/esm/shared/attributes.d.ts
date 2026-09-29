@@ -1,5 +1,6 @@
-export const emptyAttributes: Set<string>;
+export function attributeChanged(element: Element, attribute: Attr, oldValue: string | null, value: string | null): void;
 export function setAttribute(element: any, attribute: any): void;
+export function replaceAttribute(element: any, previous: any, attribute: any): void;
 export function removeAttribute(element: any, attribute: any): void;
 export namespace booleanAttribute {
     function get(element: any, name: any): any;

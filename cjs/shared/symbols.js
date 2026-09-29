@@ -1,7 +1,7 @@
 'use strict';
-// used in Attr to signal changes
-const CHANGED = Symbol('changed');
-exports.CHANGED = CHANGED;
+// used in Element for the attribute change steps of its class
+const ATTRIBUTE_CHANGED = Symbol('attributeChanged');
+exports.ATTRIBUTE_CHANGED = ATTRIBUTE_CHANGED;
 
 // used in Element to setup once classList
 const CLASS_LIST = Symbol('classList');
@@ -14,6 +14,10 @@ exports.CUSTOM_ELEMENTS = CUSTOM_ELEMENTS;
 // used in HTMLTemplateElement
 const CONTENT = Symbol('content');
 exports.CONTENT = CONTENT;
+
+// used by every node to clone itself into a given document
+const CLONE = Symbol('clone');
+exports.CLONE = CLONE;
 
 // used in Element for data attributes
 const DATASET = Symbol('dataset');
@@ -51,6 +55,22 @@ exports.MIME = MIME;
 const MUTATION_OBSERVER = Symbol('MutationObserver');
 exports.MUTATION_OBSERVER = MUTATION_OBSERVER;
 
+// used in Document to create elements from names already validated
+const CREATE_ELEMENT = Symbol('createElement');
+exports.CREATE_ELEMENT = CREATE_ELEMENT;
+
+// used in Document for the quirks mode its parser chose
+const MODE = Symbol('mode');
+exports.MODE = MODE;
+
+// used in Element for the namespace of an element whose class implies none
+const NAMESPACE = Symbol('namespace');
+exports.NAMESPACE = NAMESPACE;
+
+// used in Element for a namespace prefix
+const PREFIX = Symbol('prefix');
+exports.PREFIX = PREFIX;
+
 // used to define next node reference
 const NEXT = Symbol('next');
 exports.NEXT = NEXT;
@@ -67,6 +87,10 @@ exports.PREV = PREV;
 const PRIVATE = Symbol('private');
 exports.PRIVATE = PRIVATE;
 
+// used in DOMTokenList and CSSStyleDeclaration to follow their attribute's value
+const RESET = Symbol('reset');
+exports.RESET = RESET;
+
 // used to define the CSSStyleSheet.sheet
 const SHEET = Symbol('sheet');
 exports.SHEET = SHEET;
@@ -74,6 +98,10 @@ exports.SHEET = SHEET;
 // used to define start node reference
 const START = Symbol('start');
 exports.START = START;
+
+// used in Document for the document its template contents belong to
+const TEMPLATE_DOCUMENT = Symbol('templateDocument');
+exports.TEMPLATE_DOCUMENT = TEMPLATE_DOCUMENT;
 
 // used to define special CSS style attribute
 const STYLE = Symbol('style');

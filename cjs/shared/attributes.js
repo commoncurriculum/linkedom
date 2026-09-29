@@ -1,65 +1,51 @@
 'use strict';
-const {CLASS_LIST, NEXT, PREV, VALUE} = require('./symbols.js');
+const {ATTRIBUTE_NODE} = require('./constants.js');
+const {ATTRIBUTE_CHANGED, NEXT, PREV, VALUE} = require('./symbols.js');
 
-const {knownAdjacent, knownSiblings} = require('./utils.js');
+const {knownAdjacent, knownSiblings, linkAttribute} = require('./utils.js');
 
 const {attributeChangedCallback: ceAttributes} = require('../interface/custom-element-registry.js');
 const {attributeChangedCallback: moAttributes} = require('../interface/mutation-observer.js');
 
-const emptyAttributes = new Set([
-  'allowfullscreen',
-  'allowpaymentrequest',
-  'async',
-  'autofocus',
-  'autoplay',
-  'checked',
-  'class',
-  'contenteditable',
-  'controls',
-  'default',
-  'defer',
-  'disabled',
-  'draggable',
-  'formnovalidate',
-  'hidden',
-  'id',
-  'ismap',
-  'itemscope',
-  'loop',
-  'multiple',
-  'muted',
-  'nomodule',
-  'novalidate',
-  'open',
-  'playsinline',
-  'readonly',
-  'required',
-  'reversed',
-  'selected',
-  'style',
-  'truespeed'
-]);
-exports.emptyAttributes = emptyAttributes;
+/**
+ * @param {Element} element
+ * @param {Attr} attribute the attribute that was set, changed or removed
+ * @param {string?} oldValue
+ * @param {string?} value null once removed
+ */
+const attributeChanged = (element, attribute, oldValue, value) => {
+  const {name} = attribute;
+  element[ATTRIBUTE_CHANGED](attribute, value);
+  moAttributes(element, name, oldValue);
+  ceAttributes(element, name, oldValue, value);
+};
+exports.attributeChanged = attributeChanged;
 
+// https://dom.spec.whatwg.org/#concept-element-attributes-append
 const setAttribute = (element, attribute) => {
-  const {[VALUE]: value, name} = attribute;
-  attribute.ownerElement = element;
-  knownSiblings(element, attribute, element[NEXT]);
-  if (name === 'class')
-    element.className = value;
-  moAttributes(element, name, null);
-  ceAttributes(element, name, null, value);
+  let last = element;
+  while (last[NEXT].nodeType === ATTRIBUTE_NODE)
+    last = last[NEXT];
+  linkAttribute(element, attribute, last);
+  attribute.ownerDocument = element.ownerDocument;
+  attributeChanged(element, attribute, null, attribute[VALUE]);
 };
 exports.setAttribute = setAttribute;
 
+// https://dom.spec.whatwg.org/#concept-element-attributes-replace
+const replaceAttribute = (element, previous, attribute) => {
+  knownSiblings(previous[PREV], attribute, previous[NEXT]);
+  previous.ownerElement = previous[PREV] = previous[NEXT] = null;
+  attribute.ownerElement = element;
+  attribute.ownerDocument = element.ownerDocument;
+  attributeChanged(element, attribute, previous[VALUE], attribute[VALUE]);
+};
+exports.replaceAttribute = replaceAttribute;
+
 const removeAttribute = (element, attribute) => {
-  const {[VALUE]: value, name} = attribute;
   knownAdjacent(attribute[PREV], attribute[NEXT]);
   attribute.ownerElement = attribute[PREV] = attribute[NEXT] = null;
-  if (name === 'class')
-    element[CLASS_LIST] = null;
-  moAttributes(element, name, value);
-  ceAttributes(element, name, value, null);
+  attributeChanged(element, attribute, attribute[VALUE], null);
 };
 exports.removeAttribute = removeAttribute;
 

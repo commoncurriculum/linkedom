@@ -4,7 +4,9 @@
 export class DOMTokenList extends Set<any> implements globalThis.DOMTokenList {
     constructor(ownerElement: any);
     get length(): number;
-    get value(): string;
+    set value(value: any);
+    get value(): any;
+    item(index: any): any;
     /**
      * @param  {...string} tokens
      */
@@ -31,6 +33,9 @@ export class DOMTokenList extends Set<any> implements globalThis.DOMTokenList {
      * @param {string} token
      */
     supports(): boolean;
+    toString(): any;
+    [RESET](value: any): void;
     [OWNER_ELEMENT]: any;
 }
+import { RESET } from '../shared/symbols.js';
 import { OWNER_ELEMENT } from '../shared/symbols.js';

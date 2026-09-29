@@ -1,15 +1,14 @@
 'use strict';
 const { booleanAttribute, stringAttribute } = require('../shared/attributes.js');
-const { registerHTMLClass } = require('../shared/register-html-class.js');
 
-const { TextElement } = require('./text-element.js');
+const { HTMLElement } = require('./element.js');
 
 const tagName = 'script';
 
 /**
  * @implements globalThis.HTMLScriptElement
  */
-class HTMLScriptElement extends TextElement {
+class HTMLScriptElement extends HTMLElement {
   constructor(ownerDocument, localName = tagName) {
     super(ownerDocument, localName);
   }
@@ -74,7 +73,5 @@ class HTMLScriptElement extends TextElement {
   get text() { return this.textContent; }
   set text(content) { this.textContent = content; }
 }
-
-registerHTMLClass(tagName, HTMLScriptElement);
 
 exports.HTMLScriptElement = HTMLScriptElement;

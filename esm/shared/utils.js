@@ -1,5 +1,5 @@
 import {ELEMENT_NODE} from './constants.js';
-import {END, MIME, NEXT, PREV} from './symbols.js';
+import {CLONE, END, MIME, NEXT, PREV} from './symbols.js';
 
 const $String = String;
 export {$String as String};
@@ -28,8 +28,37 @@ export const knownSiblings = (prev, current, next) => {
   knownAdjacent(current, next);
 };
 
-export const localCase = ({localName, ownerDocument}) => {
-  return ownerDocument[MIME].ignoreCase ? localName.toUpperCase() : localName;
+/**
+ * Links a node into the tree without running any insertion steps.
+ * @param {Node} parentNode
+ * @param {Node} node
+ * @param {Node} next the node, or the end, it goes before
+ */
+export const linkNode = (parentNode, node, next = parentNode[END]) => {
+  node.parentNode = parentNode;
+  knownBoundaries(next[PREV], node, next);
+};
+
+/**
+ * Links an attribute to an element without running any attribute change steps.
+ * @param {Element} element
+ * @param {Attr} attribute
+ * @param {Node} last the element or its attribute this one follows
+ */
+export const linkAttribute = (element, attribute, last = element[END][PREV]) => {
+  attribute.ownerElement = element;
+  knownSiblings(last, attribute, last[NEXT]);
+};
+
+/**
+ * Links to parentNode a deep clone of each child of source, without running any insertion steps.
+ * @param {Node} source
+ * @param {Node} parentNode
+ * @param {Document} document the document the clones belong to
+ */
+export const linkClones = (source, parentNode, document) => {
+  for (let child = source.firstChild; child; child = child.nextSibling)
+    linkNode(parentNode, child[CLONE](document, true));
 };
 
 export const setAdjacent = (prev, next) => {
@@ -37,28 +66,4 @@ export const setAdjacent = (prev, next) => {
     prev[NEXT] = next;
   if (next)
     next[PREV] = prev;
-};
-
-/**
- * @param {import("../interface/document.js").Document} ownerDocument
- * @param {string} html
- * @return {import("../interface/document-fragment.js").DocumentFragment}
- */
-export const htmlToFragment = (ownerDocument, html) => {
-  const fragment = ownerDocument.createDocumentFragment();
-
-  const elem = ownerDocument.createElement('');
-  elem.innerHTML = html;
-  const { firstChild, lastChild } = elem;
-
-  if (firstChild) {
-    knownSegment(fragment, firstChild, lastChild, fragment[END]);
-
-    let child = firstChild;
-    do {
-      child.parentNode = fragment;
-    } while (child !== lastChild && (child = getEnd(child)[NEXT]));
-  }
-
-  return fragment;
 };

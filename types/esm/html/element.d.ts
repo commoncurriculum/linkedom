@@ -1,9 +1,10 @@
 /**
  * @implements globalThis.HTMLElement
  */
-export class HTMLElement extends Element implements globalThis.HTMLElement {
+export class HTMLElement extends ElementCSSInlineStyle implements globalThis.HTMLElement {
     static get observedAttributes(): any[];
     constructor(ownerDocument?: any, localName?: string);
+    get namespaceURI(): string;
     blur(): void;
     click(): void;
     get accessKeyLabel(): string;
@@ -165,4 +166,4 @@ export class HTMLElement extends Element implements globalThis.HTMLElement {
     set onpointerup(value: any);
     get onpointerup(): any;
 }
-import { Element } from '../interface/element.js';
+import { ElementCSSInlineStyle } from '../mixin/element-css-inline-style.js';

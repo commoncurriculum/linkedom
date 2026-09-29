@@ -10,6 +10,7 @@ const {Node: _Node} = require('../interface/node.js');
 const {ShadowRoot: _ShadowRoot} = require('../interface/shadow-root.js');
 const {Text: _Text} = require('../interface/text.js');
 const {SVGElement: _SVGElement} = require('../svg/element.js');
+const {MathMLElement: _MathMLElement} = require('../mathml/element.js');
 
 const {setPrototypeOf} = require('./object.js');
 
@@ -73,6 +74,11 @@ function SVGElement() { illegalConstructor(); }
 exports.SVGElement = SVGElement
 setPrototypeOf(SVGElement, _SVGElement);
 SVGElement.prototype = _SVGElement.prototype;
+
+function MathMLElement() { illegalConstructor(); }
+exports.MathMLElement = MathMLElement
+setPrototypeOf(MathMLElement, _MathMLElement);
+MathMLElement.prototype = _MathMLElement.prototype;
 /* c8 ignore stop */
 
 const Facades = {
@@ -86,6 +92,7 @@ const Facades = {
   Node,
   ShadowRoot,
   Text,
-  SVGElement
+  SVGElement,
+  MathMLElement
 };
 exports.Facades = Facades;

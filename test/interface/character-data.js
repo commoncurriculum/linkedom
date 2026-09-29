@@ -4,7 +4,8 @@ const {parseHTML} = global[Symbol.for('linkedom')];
 
 let {document} = parseHTML('<html><!--comment-->text</html>');
 
-const [comment, text] = document.documentElement.childNodes;
+const {firstChild: comment} = document.documentElement;
+const {firstChild: text} = document.body;
 
 assert(JSON.stringify(comment.cloneNode()), '[8,"comment"]');
 
@@ -25,6 +26,6 @@ assert(text.nodeValue, 'nodeValue');
 assert(text.textContent, 'nodeValue');
 
 ({document} = parseHTML('<html><!-- a comment with a <div> tag --></html>'));
-assert(document.toString(), '<html><!-- a comment with a <div> tag --></html>');
+assert(document.toString(), '<html><!-- a comment with a <div> tag --><head></head><body></body></html>');
 
 

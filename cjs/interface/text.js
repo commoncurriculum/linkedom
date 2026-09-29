@@ -1,7 +1,6 @@
 'use strict';
 const {TEXT_NODE} = require('../shared/constants.js');
 const {VALUE} = require('../shared/symbols.js');
-const {escape} = require('../shared/text-escaper.js');
 
 const {CharacterData} = require('./character-data.js');
 
@@ -33,12 +32,5 @@ class Text extends CharacterData {
     }
     return text.join('');
   }
-
-  cloneNode() {
-    const {ownerDocument, [VALUE]: data} = this;
-    return new Text(ownerDocument, data);
-  }
-
-  toString() { return escape(this[VALUE]); }
 }
 exports.Text = Text

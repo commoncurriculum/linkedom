@@ -1,5 +1,9 @@
 import {HTMLImageElement} from '../html/image-element.js';
 
+/**
+ * @param {Document} ownerDocument
+ * @returns {new (width?: number, height?: number) => HTMLImageElement}
+ */
 export const ImageClass = ownerDocument =>
 /**
  * @implements globalThis.Image
@@ -7,15 +11,9 @@ export const ImageClass = ownerDocument =>
 class Image extends HTMLImageElement {
   constructor(width, height) {
     super(ownerDocument);
-    switch (arguments.length) {
-      case 1:
-        this.height = width;
-        this.width = width;
-        break;
-      case 2:
-        this.height = height;
-        this.width = width;
-        break;
-    }
+    if (width !== undefined)
+      this.width = width;
+    if (height !== undefined)
+      this.height = height;
   }
 };

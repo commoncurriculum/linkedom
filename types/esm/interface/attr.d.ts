@@ -1,17 +1,20 @@
+export function toDOMString(value: any): any;
 /**
  * @implements globalThis.Attr
  */
 export class Attr extends Node implements globalThis.Attr {
-    constructor(ownerDocument: any, name: any, value?: string);
+    constructor(ownerDocument: any, name: any, value?: string, namespaceURI?: any, prefix?: any, localName?: any);
     ownerElement: any;
     name: string;
-    set value(newValue: string);
-    get value(): string;
-    cloneNode(): Attr;
+    namespaceURI: any;
+    prefix: any;
+    get nodeName(): string;
+    set value(newValue: any);
+    get value(): any;
     toJSON(): any[];
-    [VALUE]: string;
-    [CHANGED]: boolean;
+    [CLONE](document: any): Attr;
+    [VALUE]: any;
 }
 import { Node } from './node.js';
+import { CLONE } from '../shared/symbols.js';
 import { VALUE } from '../shared/symbols.js';
-import { CHANGED } from '../shared/symbols.js';
