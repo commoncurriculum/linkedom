@@ -65,7 +65,14 @@ const upper = letters => letters.toUpperCase();
 const lower = letters => letters.toLowerCase();
 
 export const asciiUppercase = name => name.replace(asciiLetters, upper);
-export const asciiLowercase = name => name.replace(asciiCapitals, lower);
+export const asciiLowercase = name => {
+  for (let i = 0; i < name.length; i++) {
+    const code = name.charCodeAt(i);
+    if (code > 64 && code < 91)
+      return name.replace(asciiCapitals, lower);
+  }
+  return name;
+};
 
 // https://html.spec.whatwg.org/multipage/custom-elements.html#valid-custom-element-name
 const potentialCustomElementName =
