@@ -8,6 +8,7 @@ import {
   DOCTYPE, END, NEXT, MIME, EVENT_TARGET, UPGRADE, NAMESPACE, PREFIX, CREATE_ELEMENT
 } from '../shared/symbols.js';
 
+import {hasBrowsingContext} from '../shared/browsing-context.js';
 import {Facades, illegalConstructor} from '../shared/facades.js';
 import {HTMLClasses} from '../shared/html-classes.js';
 import {elementInterface} from '../shared/element-interface.js';
@@ -25,6 +26,7 @@ import {CDATASection} from './cdata-section.js'
 import {Comment} from './comment.js';
 import {CustomElementRegistry, constructCustomElement} from './custom-element-registry.js';
 import {CustomEvent} from './custom-event.js';
+import {DOMImplementation} from './dom-implementation.js';
 import {DocumentFragment} from './document-fragment.js';
 import {DocumentType} from './document-type.js';
 import {Element} from './element.js';
@@ -60,6 +62,8 @@ const globalExports = assign(
 
 const window = new WeakMap;
 
+const implementations = new WeakMap;
+
 // The window's event target, which ends every event path through the document.
 const windowTarget = document => {
   if (!document[EVENT_TARGET]) {
@@ -89,9 +93,27 @@ export class Document extends NonElementParentNode {
   }
 
   /**
+   * @type {string}
+   */
+  get contentType() {
+    return this[MIME].type;
+  }
+
+  /**
+   * @type {DOMImplementation}
+   */
+  get implementation() {
+    if (!implementations.has(this))
+      implementations.set(this, new DOMImplementation(this));
+    return implementations.get(this);
+  }
+
+  /**
    * @type {globalThis.Document['defaultView']}
    */
   get defaultView() {
+    if (!hasBrowsingContext(this))
+      return null;
     if (!window.has(this))
       window.set(this, new Proxy(globalThis, {
         set: (target, name, value) => {
@@ -195,10 +217,10 @@ export class Document extends NonElementParentNode {
    */
   createElement(localName, options) {
     localName = validElementName(String(localName));
-    const isHTML = this[MIME].ignoreCase;
+    const {ignoreCase: isHTML, type} = this[MIME];
     const is = isHTML && options && options.is || null;
     const element = this[CREATE_ELEMENT](
-      isHTML ? HTML_NAMESPACE : null,
+      isHTML || type === 'application/xhtml+xml' ? HTML_NAMESPACE : null,
       isHTML ? asciiLowercase(localName) : localName,
       null,
       is
@@ -243,7 +265,7 @@ export class Document extends NonElementParentNode {
       [CUSTOM_ELEMENTS]: customElements,
       [DOCTYPE]: doctype
     } = this;
-    const document = new constructor();
+    const document = new constructor(this[MIME].type);
     document[CUSTOM_ELEMENTS] = customElements;
     if (deep) {
       const end = document[END];

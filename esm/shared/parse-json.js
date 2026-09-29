@@ -12,7 +12,7 @@ import {
   SVG_NAMESPACE
 } from './constants.js';
 
-import {CREATE_ELEMENT} from './symbols.js';
+import {CREATE_ELEMENT, DOM_PARSER} from './symbols.js';
 
 import {linkAttribute, linkNode} from './utils.js';
 
@@ -22,6 +22,7 @@ import {Comment} from '../interface/comment.js';
 import {DocumentType} from '../interface/document-type.js';
 import {Text} from '../interface/text.js';
 
+import {DOMParser} from '../dom/parser.js';
 import {HTMLDocument} from '../html/document.js';
 
 const {parse} = JSON;
@@ -40,6 +41,7 @@ export const parseJSON = value => {
   const array = typeof value === 'string' ? parse(value) : value;
   const {length} = array;
   const document = new HTMLDocument;
+  document[DOM_PARSER] = DOMParser;
   let parentNode = document, i = 0;
   while (i < length) {
     let nodeType = array[i++];

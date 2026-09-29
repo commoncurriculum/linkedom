@@ -32,7 +32,7 @@ export const baseChanged = node => {
 
 // https://html.spec.whatwg.org/multipage/urls-and-fetching.html#document-base-url
 export const documentBaseURL = document => {
-  const fallback = document.defaultView.location?.href || 'about:blank';
+  const fallback = document.defaultView?.location?.href || 'about:blank';
   if (document[BASE] === undefined)
     document[BASE] = document.querySelector('base[href]');
   const base = document[BASE];
