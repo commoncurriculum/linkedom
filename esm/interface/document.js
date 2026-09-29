@@ -4,11 +4,11 @@ import {
 } from '../shared/constants.js';
 
 import {
-  CUSTOM_ELEMENTS, DOM_PARSER, GLOBALS, IMAGE, MUTATION_OBSERVER,
+  CUSTOM_ELEMENTS, DOM_PARSER, GLOBALS, IMAGE, MUTATION_OBSERVER, TEMPLATE_DOCUMENT,
   DOCTYPE, END, NEXT, MIME, EVENT_TARGET, UPGRADE, NAMESPACE, PREFIX, CREATE_ELEMENT
 } from '../shared/symbols.js';
 
-import {hasBrowsingContext} from '../shared/browsing-context.js';
+import {hasBrowsingContext, withoutBrowsingContext} from '../shared/browsing-context.js';
 import {Facades, illegalConstructor} from '../shared/facades.js';
 import {HTMLClasses} from '../shared/html-classes.js';
 import {elementInterface} from '../shared/element-interface.js';
@@ -193,6 +193,18 @@ export class Document extends NonElementParentNode {
   }
 
   get isConnected() { return true; }
+
+  // https://html.spec.whatwg.org/multipage/scripting.html#appropriate-template-contents-owner-document
+  get [TEMPLATE_DOCUMENT]() {
+    const document = withoutBrowsingContext(
+      new this.constructor(this[MIME].ignoreCase ? 'text/html' : 'application/xml'),
+      this
+    );
+    document[DOM_PARSER] = this[DOM_PARSER];
+    defineProperties(document, {[TEMPLATE_DOCUMENT]: {value: document}});
+    defineProperties(this, {[TEMPLATE_DOCUMENT]: {value: document}});
+    return document;
+  }
 
   /**
    * @protected

@@ -1,4 +1,4 @@
-import {CONTENT} from '../shared/symbols.js';
+import {CONTENT, TEMPLATE_DOCUMENT} from '../shared/symbols.js';
 
 import {HTMLElement} from './element.js';
 
@@ -10,7 +10,7 @@ const tagName = 'template';
 class HTMLTemplateElement extends HTMLElement {
   constructor(ownerDocument) {
     super(ownerDocument, tagName);
-    this[CONTENT] = this.ownerDocument.createDocumentFragment();
+    this[CONTENT] = this.ownerDocument[TEMPLATE_DOCUMENT].createDocumentFragment();
   }
 
   get content() {

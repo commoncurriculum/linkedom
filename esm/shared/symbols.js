@@ -70,6 +70,9 @@ export const SHEET = Symbol('sheet');
 // used to define start node reference
 export const START = Symbol('start');
 
+// used in Document for the document its template contents belong to
+export const TEMPLATE_DOCUMENT = Symbol('templateDocument');
+
 // used to define special CSS style attribute
 export const STYLE = Symbol('style');
 

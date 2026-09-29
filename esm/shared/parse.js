@@ -16,13 +16,14 @@ export const parseDocument = (document, markup) => document[MIME].ignoreCase ?
 /**
  * @param {Element} context the element the markup is parsed for
  * @param {string?} markup
+ * @param {Document} document the document of the nodes
  * @returns {DocumentFragment}
  */
-export const parseFragment = (context, markup) => {
+export const parseFragment = (context, markup, document = context.ownerDocument) => {
   markup = markup === null ? '' : String(markup);
   return ignoreCase(context) ?
-    parseHTMLFragment(context, markup) :
-    parseXML(context.ownerDocument.createDocumentFragment(), markup, context);
+    parseHTMLFragment(context, markup, document) :
+    parseXML(document.createDocumentFragment(), markup, context);
 };
 
 /**
