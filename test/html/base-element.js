@@ -10,6 +10,11 @@ const {parseHTML} = global[Symbol.for('linkedom')];
   assert(absolute.href, 'http://example.com/', 'an absolute href is parsed and serialized');
   assert(none.href, '', 'no href');
   assert(document.baseURI, 'about:blank');
+  a.setAttribute('href', 'p?q=1#f');
+  assert(a.href, 'p?q=1#f', 'against about:blank, a relative href with a fragment stays as written');
+  a.setAttribute('href', ' #f');
+  assert(a.href, 'about:blank#f', 'a fragment alone resolves against about:blank');
+  a.setAttribute('href', 'x/y');
 
   const base = document.createElement('base');
   base.setAttribute('href', 'https://example.org/dir/page.html');
